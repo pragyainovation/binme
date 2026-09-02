@@ -13,6 +13,12 @@ export default function SessionDetailPage({ params }) {
   const [message, setMessage] = useState("");
   const [user, setUser] = useState(null);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -53,32 +59,27 @@ export default function SessionDetailPage({ params }) {
     setRegistering(false);
   };
 
-  const minutesUntilStart = useMemo(() => {
-    if (!session?.date || !session?.time) return null;
-
-    const startDate = parseISTDate(session.date, session.time);
-    if (!startDate) return null;
-
-    return (startDate.getTime() - Date.now()) / 60000;
-  }, [session]);
-
-  const sessionEnded = useMemo(() => {
+  const sessionTiming = useMemo(() => {
     if (!session?.date || !session?.time || !session?.duration) return false;
 
     const startDate = parseISTDate(session.date, session.time);
     if (!startDate) return false;
 
-    const endDate = new Date(startDate.getTime() + Number(session.duration) * 60000);
-    return Date.now() > endDate.getTime();
-  }, [session]);
+    const startMs = startDate.getTime();
+    const endMs = startMs + Number(session.duration) * 60000;
+    const now = Date.now();
+    return {
+      ended: now > endMs,
+      running: now >= startMs && now <= endMs,
+    };
+  }, [session, now]);
+  const sessionEnded = sessionTiming?.ended ?? false;
 
   const showJoinButton = Boolean(
-    !sessionEnded &&
+    sessionTiming?.running &&
+    session?.status !== "cancelled" &&
     session?.meetLink &&
-    alreadyRegistered &&
-    minutesUntilStart !== null &&
-    minutesUntilStart <= 5 &&
-    minutesUntilStart >= 0
+    alreadyRegistered
   );
 
   const showRegisterButton = !sessionEnded && !alreadyRegistered;

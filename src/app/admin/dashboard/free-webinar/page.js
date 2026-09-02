@@ -6,7 +6,7 @@ import {
   getFreeWebinarsWithRegistrations,
   updateFreeWebinar,
 } from "../../../firebase/firestore";
-import { IST_TIMEZONE, formatTimeIST, parseTimeInput } from "../../../firebase/time";
+import { IST_TIMEZONE, formatTimeIST, parseISTDate, parseTimeInput } from "../../../firebase/time";
 import DataTable from "../../../components/DataTable";
 
 const emptyForm = { title: "", description: "", date: "", time: "", duration: "60", meetLink: "" };
@@ -24,6 +24,12 @@ export default function AdminFreeWebinarPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [selectedWebinarId, setSelectedWebinarId] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const loadWebinars = async () => {
     const items = await getFreeWebinarsWithRegistrations();
@@ -108,6 +114,7 @@ export default function AdminFreeWebinarPage() {
         const webinar = row.original;
         return <div style={styles.rowActions}>
           <button type="button" style={styles.viewButton} onClick={() => setSelectedWebinarId(selectedWebinarId === webinar.id ? null : webinar.id)}>{selectedWebinarId === webinar.id ? "Hide" : "View"}</button>
+          {isWebinarRunning(webinar) && webinar.meetLink ? <a href={webinar.meetLink} target="_blank" rel="noreferrer" style={styles.joinButton}>Join Google Meet</a> : null}
           <button type="button" style={styles.smallButton} onClick={() => editWebinar(webinar)}>Edit</button>
           <button type="button" style={styles.smallButton} onClick={() => toggleStatus(webinar)}>{webinar.status === "inactive" ? "Activate" : "Deactivate"}</button>
         </div>;
@@ -115,6 +122,15 @@ export default function AdminFreeWebinarPage() {
     },
   ];
   const selectedWebinar = webinars.find((webinar) => webinar.id === selectedWebinarId);
+  const isWebinarRunning = (webinar) => {
+    if (webinar?.status === "inactive") return false;
+    if (!webinar?.date || !webinar?.time || !webinar?.duration) return false;
+    const startDate = parseISTDate(webinar.date, webinar.time);
+    if (!startDate) return false;
+    const startMs = startDate.getTime();
+    const endMs = startMs + Number(webinar.duration) * 60000;
+    return now >= startMs && now <= endMs;
+  };
 
   return (
     <main style={styles.page}>
@@ -188,6 +204,7 @@ const styles = {
   rowActions: { display: "flex", gap: 8, alignItems: "start", flexWrap: "wrap", justifyContent: "end" },
   smallButton: { border: 0, borderRadius: 8, padding: "8px 11px", background: "#eef1ff", color: "#1e2c35", fontWeight: 700, cursor: "pointer" },
   viewButton: { border: 0, borderRadius: 8, padding: "8px 11px", background: "#dff9e8", color: "#157347", fontWeight: 700, cursor: "pointer" },
+  joinButton: { border: 0, borderRadius: 8, padding: "8px 11px", background: "#d9f95d", color: "#16211f", fontWeight: 800, textDecoration: "none" },
   statusActive: { display: "inline-block", background: "#dff9e8", color: "#157347", padding: "5px 9px", borderRadius: 999, fontSize: 12, fontWeight: 800 },
   statusInactive: { display: "inline-block", background: "#f7d9d9", color: "#a33131", padding: "5px 9px", borderRadius: 999, fontSize: 12, fontWeight: 800 },
   registrationPanel: { marginTop: 24, display: "grid", gap: 12 },

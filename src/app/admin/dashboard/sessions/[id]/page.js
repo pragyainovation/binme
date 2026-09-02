@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getRegistrationsBySession, getSessionById, getAllUsers } from "../../../../firebase/firestore";
-import { formatTimeIST } from "../../../../firebase/time";
+import { formatTimeIST, parseISTDate } from "../../../../firebase/time";
 import DataTable from "../../../../components/DataTable";
 
 const userColumns = [
@@ -15,6 +15,22 @@ export default function AdminSessionDetailPage({ params }) {
   const [session, setSession] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const sessionRunning = (() => {
+    if (session?.status === "cancelled") return false;
+    if (!session?.date || !session?.time || !session?.duration) return false;
+    const startDate = parseISTDate(session.date, session.time);
+    if (!startDate) return false;
+    const startMs = startDate.getTime();
+    const endMs = startMs + Number(session.duration) * 60000;
+    return now >= startMs && now <= endMs;
+  })();
 
   useEffect(() => {
     const load = async () => {
@@ -44,7 +60,11 @@ export default function AdminSessionDetailPage({ params }) {
         <h1 style={styles.title}>{session.title}</h1>
         <p style={styles.meta}>Date: {session.date}</p>
         <p style={styles.meta}>Time: {formatTimeIST(session.time)} IST</p>
+        <p style={styles.meta}>Duration: {session.duration} Minutes</p>
         <p style={styles.meta}>Registered Users: {users.length}</p>
+        {sessionRunning && session.meetLink ? (
+          <a href={session.meetLink} target="_blank" rel="noreferrer" style={styles.joinButton}>Join Google Meet</a>
+        ) : null}
 
         <DataTable columns={userColumns} data={users} emptyMessage="No users registered yet." />
       </div>
@@ -57,4 +77,5 @@ const styles = {
   container: { maxWidth: 980, margin: "0 auto" },
   title: { fontSize: 38, marginBottom: 10 },
   meta: { margin: "6px 0", color: "#4e5653" },
+  joinButton: { display: "inline-block", margin: "14px 0 22px", background: "#d9f95d", color: "#16211f", borderRadius: 10, padding: "12px 16px", fontWeight: 800, textDecoration: "none" },
 };

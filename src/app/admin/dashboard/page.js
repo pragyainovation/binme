@@ -14,25 +14,6 @@ import {
 import { formatTimeIST } from "../../firebase/time";
 import DataTable from "../../components/DataTable";
 
-const sessionColumns = [
-  { header: "Session", accessorKey: "title" },
-  { header: "Date", accessorKey: "date" },
-  { header: "Time", accessorKey: "time", cell: ({ row }) => `${formatTimeIST(row.original.time)} IST` },
-  { header: "Registered", accessorKey: "registrationCount", cell: ({ row }) => row.original.registrationCount || 0 },
-  {
-    header: "Actions",
-    id: "actions",
-    cell: ({ row }) => {
-      const session = row.original;
-      return <div style={styles.rowButtons}>
-        <Link href={session.isFreeWebinar ? "/admin/dashboard/free-webinar" : `/admin/dashboard/sessions/${session.id}`} style={styles.viewButton}>View</Link>
-        <button type="button" style={styles.actionButton} disabled={actionId === session.id} onClick={() => deactivate(session)}>Deactivate Session</button>
-        <button type="button" style={styles.deleteButton} disabled={actionId === session.id} onClick={() => remove(session)}>Delete Session</button>
-      </div>;
-    },
-  },
-];
-
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({ totalUsers: 0, upcomingSessions: 0, totalRegistrations: 0 });
   const [sessions, setSessions] = useState([]);
@@ -79,6 +60,25 @@ export default function AdminDashboardPage() {
       setActionId(null);
     }
   };
+
+  const sessionColumns = [
+    { header: "Session", accessorKey: "title" },
+    { header: "Date", accessorKey: "date" },
+    { header: "Time", accessorKey: "time", cell: ({ row }) => `${formatTimeIST(row.original.time)} IST` },
+    { header: "Registered", accessorKey: "registrationCount", cell: ({ row }) => row.original.registrationCount || 0 },
+    {
+      header: "Actions",
+      id: "actions",
+      cell: ({ row }) => {
+        const session = row.original;
+        return <div style={styles.rowButtons}>
+          <Link href={session.isFreeWebinar ? "/admin/dashboard/free-webinar" : `/admin/dashboard/sessions/${session.id}`} style={styles.viewButton}>View</Link>
+          <button type="button" style={styles.actionButton} disabled={actionId === session.id} onClick={() => deactivate(session)}>Deactivate Session</button>
+          <button type="button" style={styles.deleteButton} disabled={actionId === session.id} onClick={() => remove(session)}>Delete Session</button>
+        </div>;
+      },
+    },
+  ];
 
   return (
     <main style={styles.page}>

@@ -105,7 +105,7 @@ export default function DashboardPage() {
     {
       header: "Actions",
       id: "actions",
-      cell: ({ row }) => <Link href={row.original.isFreeWebinar ? "/#webinar" : `/dashboard/sessions/${row.original.id}`} style={styles.linkButton}>View Details</Link>,
+      cell: ({ row }) => <Link href={row.original.isFreeWebinar ? "/dashboard/free-webinar" : `/dashboard/sessions/${row.original.id}`} style={styles.linkButton}>View Details</Link>,
     },
   ];
 
