@@ -18,11 +18,11 @@ export default function DashboardLayout({ children }) {
 
   const handleLogout = async () => {
     await logout();
-    router.replace("/login");
+    router.replace("/");
   };
 
   return (
-    <ProtectedRoute requiredRole="user" redirectTo="/login">
+    <ProtectedRoute requiredRole="user" redirectTo="/">
       <div className="dashboard-shell">
         <aside className={`dashboard-sidebar ${menuOpen ? "open" : ""}`}>
           <div className="dashboard-brand">BinMe</div>

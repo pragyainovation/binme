@@ -4,7 +4,27 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../firebase/config";
-import { getRegistrationsByUser, getSessionById } from "../../firebase/firestore";
+import DataTable from "../../components/DataTable";
+import {
+  claimFreeWebinarRegistrations,
+  getFreeWebinarById,
+  getRegistrationsByUser,
+  getSessionById,
+} from "../../firebase/firestore";
+
+const registrationColumns = [
+  { header: "Session", id: "title", accessorFn: (item) => item.freeWebinar?.title || item.session?.title || "Session" },
+  { header: "Date", id: "date", accessorFn: (item) => item.freeWebinar?.date || item.session?.date || "-" },
+  { header: "Time", id: "time", accessorFn: (item) => item.freeWebinar?.time || item.session?.time || "-" },
+  { header: "Type", id: "type", accessorFn: (item) => item.freeWebinar ? "Free webinar" : "Session" },
+  {
+    header: "Actions",
+    id: "actions",
+    cell: ({ row }) => row.original.freeWebinar ? (
+      row.original.freeWebinar.meetLink ? <a href={row.original.freeWebinar.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton}>Join Webinar</a> : "-"
+    ) : <Link href={`/dashboard/sessions/${row.original.sessionId}`} style={styles.linkButton}>View Session</Link>,
+  },
+];
 
 export default function MyRegistrationsPage() {
   const [items, setItems] = useState([]);
@@ -21,7 +41,12 @@ export default function MyRegistrationsPage() {
       });
 
       const transformed = await Promise.all(sessionPromises);
-      setItems(transformed);
+      const freeRegistrations = await claimFreeWebinarRegistrations(user);
+      const freeItems = await Promise.all(freeRegistrations.map(async (registration) => ({
+        ...registration,
+        freeWebinar: await getFreeWebinarById(registration.webinarId),
+      })));
+      setItems([...transformed, ...freeItems]);
       setLoading(false);
     });
 
@@ -45,32 +70,7 @@ export default function MyRegistrationsPage() {
         ) : items.length === 0 ? (
           <div style={styles.emptyState}>No registrations yet.</div>
         ) : (
-          <div style={styles.list}>
-            {items.map((item) => (
-              <article key={item.id} style={styles.card}>
-                <div style={styles.cardTop}>
-                  <div>
-                    <p style={styles.cardLabel}>Session</p>
-                    <h2 style={styles.cardTitle}>{item.session?.title || "Session"}</h2>
-                  </div>
-                  <span style={styles.status}>✓ Registered</span>
-                </div>
-
-                <div style={styles.metaGrid}>
-                  <div>
-                    <span style={styles.metaLabel}>Date</span>
-                    <p style={styles.cardMeta}>{item.session?.date || "-"}</p>
-                  </div>
-                  <div>
-                    <span style={styles.metaLabel}>Time</span>
-                    <p style={styles.cardMeta}>{item.session?.time || "-"}</p>
-                  </div>
-                </div>
-
-                <Link href={`/dashboard/sessions/${item.sessionId}`} style={styles.linkButton}>View Session</Link>
-              </article>
-            ))}
-          </div>
+          <DataTable columns={registrationColumns} data={items} emptyMessage="No registrations yet." />
         )}
       </div>
     </main>

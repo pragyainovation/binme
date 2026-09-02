@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../../firebase/config";
 import { getSessionById, isUserRegistered, registerForSession } from "../../../firebase/firestore";
+import { formatTimeIST, parseISTDate } from "../../../firebase/time";
 
 export default function SessionDetailPage({ params }) {
   const [session, setSession] = useState(null);
@@ -55,8 +56,8 @@ export default function SessionDetailPage({ params }) {
   const minutesUntilStart = useMemo(() => {
     if (!session?.date || !session?.time) return null;
 
-    const startDate = new Date(`${session.date}T${session.time}`);
-    if (Number.isNaN(startDate.getTime())) return null;
+    const startDate = parseISTDate(session.date, session.time);
+    if (!startDate) return null;
 
     return (startDate.getTime() - Date.now()) / 60000;
   }, [session]);
@@ -64,8 +65,8 @@ export default function SessionDetailPage({ params }) {
   const sessionEnded = useMemo(() => {
     if (!session?.date || !session?.time || !session?.duration) return false;
 
-    const startDate = new Date(`${session.date}T${session.time}`);
-    if (Number.isNaN(startDate.getTime())) return false;
+    const startDate = parseISTDate(session.date, session.time);
+    if (!startDate) return false;
 
     const endDate = new Date(startDate.getTime() + Number(session.duration) * 60000);
     return Date.now() > endDate.getTime();
@@ -94,7 +95,7 @@ export default function SessionDetailPage({ params }) {
 
         <div style={styles.metaGrid}>
           <div><strong>Date</strong><p>{session.date}</p></div>
-          <div><strong>Time</strong><p>{session.time}</p></div>
+          <div><strong>Time</strong><p>{formatTimeIST(session.time)} IST</p></div>
           <div><strong>Duration</strong><p>{session.duration} Minutes</p></div>
         </div>
 
@@ -117,7 +118,7 @@ export default function SessionDetailPage({ params }) {
           <div style={styles.successBox}>
             <strong>✓ You are registered</strong>
             <p>Date: {session.date}</p>
-            <p>Time: {session.time}</p>
+            <p>Time: {formatTimeIST(session.time)} IST</p>
             {showJoinButton && session.meetLink ? (
               <a href={session.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton}>Join Google Meet</a>
             ) : null}

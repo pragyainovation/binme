@@ -2,31 +2,83 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getAllUsers, getSessionsWithRegistrationData } from "../../firebase/firestore";
+import {
+  cancelSession,
+  deleteFreeWebinar,
+  deleteSession,
+  getAllUsers,
+  getFreeWebinarsWithRegistrations,
+  getSessionsWithRegistrationData,
+  updateFreeWebinar,
+} from "../../firebase/firestore";
+import { formatTimeIST } from "../../firebase/time";
+import DataTable from "../../components/DataTable";
+
+const sessionColumns = [
+  { header: "Session", accessorKey: "title" },
+  { header: "Date", accessorKey: "date" },
+  { header: "Time", accessorKey: "time", cell: ({ row }) => `${formatTimeIST(row.original.time)} IST` },
+  { header: "Registered", accessorKey: "registrationCount", cell: ({ row }) => row.original.registrationCount || 0 },
+  {
+    header: "Actions",
+    id: "actions",
+    cell: ({ row }) => {
+      const session = row.original;
+      return <div style={styles.rowButtons}>
+        <Link href={session.isFreeWebinar ? "/admin/dashboard/free-webinar" : `/admin/dashboard/sessions/${session.id}`} style={styles.viewButton}>View</Link>
+        <button type="button" style={styles.actionButton} disabled={actionId === session.id} onClick={() => deactivate(session)}>Deactivate Session</button>
+        <button type="button" style={styles.deleteButton} disabled={actionId === session.id} onClick={() => remove(session)}>Delete Session</button>
+      </div>;
+    },
+  },
+];
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({ totalUsers: 0, upcomingSessions: 0, totalRegistrations: 0 });
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState(null);
+
+  const loadDashboard = async () => {
+    const users = await getAllUsers();
+    const sessionList = await getSessionsWithRegistrationData();
+    const freeWebinars = await getFreeWebinarsWithRegistrations();
+    const freeWebinar = freeWebinars.find((webinar) => webinar.status !== "inactive");
+    const allSessions = freeWebinar ? [...sessionList, { ...freeWebinar, isFreeWebinar: true }] : sessionList;
+    const totalRegistrations = allSessions.reduce((sum, session) => sum + Number(session.registrationCount || 0), 0);
+
+    setStats({ totalUsers: users.length, upcomingSessions: allSessions.length, totalRegistrations });
+    setSessions(allSessions);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const load = async () => {
-      const users = await getAllUsers();
-      const sessionList = await getSessionsWithRegistrationData();
-
-      const totalRegistrations = sessionList.reduce((sum, session) => sum + Number(session.registrationCount || 0), 0);
-
-      setStats({
-        totalUsers: users.length,
-        upcomingSessions: sessionList.length,
-        totalRegistrations,
-      });
-      setSessions(sessionList);
-      setLoading(false);
-    };
-
-    load();
+    loadDashboard();
   }, []);
+
+  const deactivate = async (session) => {
+    if (!window.confirm(`Deactivate ${session.title}?`)) return;
+    setActionId(session.id);
+    try {
+      if (session.isFreeWebinar) await updateFreeWebinar(session.id, { status: "inactive" });
+      else await cancelSession(session.id);
+      await loadDashboard();
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const remove = async (session) => {
+    if (!window.confirm(`Delete ${session.title}? This cannot be undone.`)) return;
+    setActionId(session.id);
+    try {
+      if (session.isFreeWebinar) await deleteFreeWebinar(session.id);
+      else await deleteSession(session.id);
+      await loadDashboard();
+    } finally {
+      setActionId(null);
+    }
+  };
 
   return (
     <main style={styles.page}>
@@ -54,22 +106,7 @@ export default function AdminDashboardPage() {
                 <h2 style={styles.sectionTitle}>Upcoming Sessions</h2>
                 <span style={styles.sectionBadge}>Operations</span>
               </div>
-              <div style={styles.sessionList}>
-                {sessions.length ? sessions.map((session) => (
-                  <div key={session.id} style={styles.sessionRow}>
-                    <div>
-                      <strong style={styles.sessionTitle}>{session.title}</strong><br />
-                      <span style={styles.sessionMeta}>{session.date}</span>
-                    </div>
-                    <div>
-                      <span style={styles.sessionMeta}>Registered: {session.registrationCount || 0}</span>
-                    </div>
-                    <div style={styles.rowButtons}>
-                      <Link href={`/admin/dashboard/sessions/${session.id}`} style={styles.smallButton}>View</Link>
-                    </div>
-                  </div>
-                )) : <div style={styles.emptyState}>No sessions yet.</div>}
-              </div>
+              <DataTable columns={sessionColumns} data={sessions} emptyMessage="No sessions yet." />
             </section>
           </>
         )}
@@ -135,19 +172,6 @@ const styles = {
     letterSpacing: 0.08,
     textTransform: "uppercase",
   },
-  sessionList: { display: "grid", gap: 16 },
-  sessionRow: {
-    display: "grid",
-    gridTemplateColumns: "1.5fr 1fr 0.7fr",
-    alignItems: "center",
-    gap: 16,
-    border: "1px solid #ebdcc3",
-    padding: 16,
-    borderRadius: 16,
-    background: "#fffdf8",
-  },
-  sessionTitle: { fontSize: 18 },
-  sessionMeta: { color: "#53615f" },
   rowButtons: { display: "flex", justifyContent: "flex-end" },
   smallButton: {
     background: "#eef1ff",
@@ -156,6 +180,9 @@ const styles = {
     borderRadius: 10,
     fontWeight: 700,
   },
+  viewButton: { border: 0, borderRadius: 8, padding: "8px 11px", background: "#dfe8ff", color: "#2941a8", fontWeight: 700 },
+  actionButton: { border: 0, borderRadius: 8, padding: "8px 11px", background: "#fef2d8", color: "#8a5a07", fontWeight: 700, cursor: "pointer" },
+  deleteButton: { border: 0, borderRadius: 8, padding: "8px 11px", background: "#f7d9d9", color: "#a33131", fontWeight: 700, cursor: "pointer" },
   loadingCard: {
     background: "rgba(255,255,255,0.7)",
     border: "1px solid rgba(20,29,26,0.05)",

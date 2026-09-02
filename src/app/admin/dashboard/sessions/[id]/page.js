@@ -2,6 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { getRegistrationsBySession, getSessionById, getAllUsers } from "../../../../firebase/firestore";
+import { formatTimeIST } from "../../../../firebase/time";
+import DataTable from "../../../../components/DataTable";
+
+const userColumns = [
+  { header: "Name", accessorKey: "name", cell: ({ row }) => row.original.name || "Unnamed" },
+  { header: "Email", accessorKey: "email", cell: ({ row }) => row.original.email || "-" },
+  { header: "Mobile", accessorKey: "mobile", cell: ({ row }) => row.original.mobile || "-" },
+];
 
 export default function AdminSessionDetailPage({ params }) {
   const [session, setSession] = useState(null);
@@ -35,29 +43,10 @@ export default function AdminSessionDetailPage({ params }) {
       <div style={styles.container}>
         <h1 style={styles.title}>{session.title}</h1>
         <p style={styles.meta}>Date: {session.date}</p>
-        <p style={styles.meta}>Time: {session.time}</p>
+        <p style={styles.meta}>Time: {formatTimeIST(session.time)} IST</p>
         <p style={styles.meta}>Registered Users: {users.length}</p>
 
-        <div style={styles.tableWrap}>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Mobile</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.length ? users.map((user) => (
-                <tr key={user.uid}>
-                  <td>{user.name || "Unnamed"}</td>
-                  <td>{user.email || "-"}</td>
-                  <td>{user.mobile || "-"}</td>
-                </tr>
-              )) : <tr><td colSpan={3}>No users registered yet.</td></tr>}
-            </tbody>
-          </table>
-        </div>
+        <DataTable columns={userColumns} data={users} emptyMessage="No users registered yet." />
       </div>
     </main>
   );
@@ -68,7 +57,4 @@ const styles = {
   container: { maxWidth: 980, margin: "0 auto" },
   title: { fontSize: 38, marginBottom: 10 },
   meta: { margin: "6px 0", color: "#4e5653" },
-  tableWrap: { marginTop: 24, background: "#fff", borderRadius: 18, overflow: "hidden", boxShadow: "0 14px 35px rgba(0,0,0,0.04)" },
-  table: { width: "100%", borderCollapse: "collapse" },
-  table: { width: "100%", borderCollapse: "collapse" },
 };

@@ -6,7 +6,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase/config";
 import { getUserProfile } from "../firebase/firestore";
 
-export default function ProtectedRoute({ children, requiredRole = null, redirectTo = "/login" }) {
+export default function ProtectedRoute({ children, requiredRole = null, redirectTo = "/" }) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [allowed, setAllowed] = useState(false);
@@ -27,7 +27,7 @@ export default function ProtectedRoute({ children, requiredRole = null, redirect
         setReady(true);
 
         if (!hasAccess) {
-          router.replace(requiredRole === "admin" ? "/admin/login" : "/login");
+          router.replace(requiredRole === "admin" ? "/admin/login" : "/");
         }
         return;
       }

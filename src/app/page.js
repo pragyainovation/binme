@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./firebase/config";
+import { getFreeWebinar, getUserProfile, registerForFreeWebinar } from "./firebase/firestore";
+import { formatTimeIST } from "./firebase/time";
 
 const Arrow = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -16,10 +18,22 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [webinar, setWebinar] = useState(null);
+  const [webinarLoading, setWebinarLoading] = useState(true);
+  const [registrationOpen, setRegistrationOpen] = useState(false);
+  const [registrationLoading, setRegistrationLoading] = useState(false);
+  const [registrationError, setRegistrationError] = useState("");
+  const [registrationForm, setRegistrationForm] = useState({ name: "", email: "", mobile: "" });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setCheckingAuth(false);
+        return;
+      }
+
+      const profile = await getUserProfile(user.uid);
+      if (profile?.role === "user") {
         router.replace("/dashboard");
         return;
       }
@@ -30,8 +44,44 @@ export default function Home() {
     return () => unsubscribe();
   }, [router]);
 
+  useEffect(() => {
+    getFreeWebinar()
+      .then(setWebinar)
+      .catch(() => setWebinar(null))
+      .finally(() => setWebinarLoading(false));
+  }, []);
+
   const register = () => {
-    router.push("/login");
+    router.push("/signup");
+  };
+
+  const openWebinarRegistration = () => {
+    setNotice("");
+    setRegistrationError("");
+    setRegistrationOpen(true);
+  };
+
+  const handleRegistrationChange = (event) => {
+    const { name, value } = event.target;
+    setRegistrationForm((previous) => ({ ...previous, [name]: value }));
+  };
+
+  const handleRegistrationSubmit = async (event) => {
+    event.preventDefault();
+    if (!webinar) return;
+
+    setRegistrationLoading(true);
+    setRegistrationError("");
+    try {
+      const result = await registerForFreeWebinar(webinar.id, registrationForm);
+      setRegistrationOpen(false);
+      setRegistrationForm({ name: "", email: "", mobile: "" });
+      setNotice(result.alreadyRegistered ? "You are already registered for this webinar." : "You are registered. See you at the webinar!");
+    } catch (submitError) {
+      setRegistrationError(submitError.message || "Unable to complete registration.");
+    } finally {
+      setRegistrationLoading(false);
+    }
   };
 
   const goToLogin = () => router.push("/login");
@@ -59,6 +109,8 @@ export default function Home() {
           </button>
 
           <div className={`nav-links ${menuOpen ? "open" : ""}`}>
+            <a href="/login">Login</a>
+            <a href="/signup">Register</a>
             <a href="#why">Why BinMe</a>
             <a href="#webinar">Free Webinar</a>
             <a href="#stories">Success Stories</a>
@@ -90,9 +142,9 @@ export default function Home() {
             </p>
 
             <div className="hero-buttons">
-              <button type="button" className="button button-lime" onClick={register}>
+              <a  className="button button-lime" href="#webinar">
                 Join the free webinar <Arrow />
-              </button>
+              </a>
               <a className="text-link" href="#why">
                 Explore how it works <span>↓</span>
               </a>
@@ -210,41 +262,68 @@ export default function Home() {
           </div>
 
           <div className="webinar-content">
+            {webinarLoading ? <p className="notice" role="status">Loading free webinar...</p> : !webinar ? (
+              <>
+                <p className="eyebrow"><span className="sparkle">✦</span> Live &amp; completely free</p>
+                <h2>No free webinar is currently available.</h2>
+              </>
+            ) : (
+              <>
             <p className="eyebrow">
               <span className="sparkle">✦</span> Live &amp; completely free
             </p>
             <h2>
-              Your first step to
+              {webinar.title}
               <br />
               <em>speaking freely.</em>
             </h2>
-            <p>
-              Join our friendly, live intro session and experience a new way to learn English — no pressure, no cost.
-            </p>
+            <p>{webinar.description}</p>
 
             <div className="event-details">
               <div>
                 <span>Date</span>
-                <b>06 September 2026</b>
+                <b>{webinar.date}</b>
               </div>
               <div>
                 <span>Time</span>
-                <b>7:00 PM IST</b>
+                <b>{formatTimeIST(webinar.time)} IST</b>
               </div>
               <div>
                 <span>Duration</span>
-                <b>60 minutes</b>
+                <b>{webinar.duration} minutes</b>
               </div>
             </div>
 
-            <button type="button" className="button button-lime" onClick={register}>
+            <button type="button" className="button button-lime" onClick={openWebinarRegistration}>
               Reserve my free spot <Arrow />
             </button>
+              </>
+            )}
 
             {notice && <p className="notice" role="status">{notice}</p>}
           </div>
         </div>
       </section>
+
+      {registrationOpen && webinar && (
+        <div className="webinar-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setRegistrationOpen(false)}>
+          <section className="webinar-modal" role="dialog" aria-modal="true" aria-labelledby="webinar-registration-title">
+            <button type="button" className="webinar-modal-close" aria-label="Close registration" onClick={() => setRegistrationOpen(false)}>×</button>
+            <p className="eyebrow orange">Free webinar</p>
+            <h2 id="webinar-registration-title">Reserve your spot.</h2>
+            <p>Tell us where to send your webinar details.</p>
+            <form className="webinar-registration-form" onSubmit={handleRegistrationSubmit}>
+              <label>Name<input name="name" value={registrationForm.name} onChange={handleRegistrationChange} required /></label>
+              <label>Email<input name="email" type="email" value={registrationForm.email} onChange={handleRegistrationChange} required /></label>
+              <label>Mobile Number<input name="mobile" type="tel" value={registrationForm.mobile} onChange={handleRegistrationChange} required /></label>
+              {registrationError && <p className="notice error" role="alert">{registrationError}</p>}
+              <button type="submit" className="button button-dark" disabled={registrationLoading}>
+                {registrationLoading ? "Registering..." : "Register for free"}
+              </button>
+            </form>
+          </section>
+        </div>
+      )}
 
       <section className="story section" id="stories">
         <div className="container story-grid">

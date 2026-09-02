@@ -2,15 +2,25 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import DataTable from "../components/DataTable";
 import { auth } from "../firebase/config";
 import { onAuthStateChanged } from "firebase/auth";
-import { getRegistrationsByUser, getSessions } from "../firebase/firestore";
+import {
+  claimFreeWebinarRegistrations,
+  getFreeWebinar,
+  getFreeWebinarById,
+  getRegistrationsByUser,
+  getSessions,
+} from "../firebase/firestore";
+import { formatTimeIST, parseISTDate } from "../firebase/time";
 
 const tabs = ["Upcoming", "Completed", "Closed", "Registered"];
 
 export default function DashboardPage() {
   const [sessions, setSessions] = useState([]);
   const [registrations, setRegistrations] = useState([]);
+  const [freeWebinar, setFreeWebinar] = useState(null);
+  const [freeWebinarRegistration, setFreeWebinarRegistration] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Upcoming");
@@ -22,9 +32,14 @@ export default function DashboardPage() {
       setUser(currentUser);
       const sessionList = await getSessions();
       const registrationList = await getRegistrationsByUser(currentUser.uid);
+      const freeRegistrations = await claimFreeWebinarRegistrations(currentUser);
+      const latestFreeRegistration = freeRegistrations[0] || null;
+      const freeWebinarData = await getFreeWebinar();
 
-      setSessions(sessionList);
+      setSessions(freeWebinarData ? [{ ...freeWebinarData, isFreeWebinar: true }, ...sessionList] : sessionList);
       setRegistrations(registrationList);
+      setFreeWebinarRegistration(latestFreeRegistration);
+      setFreeWebinar(latestFreeRegistration ? await getFreeWebinarById(latestFreeRegistration.webinarId) : freeWebinarData);
       setLoading(false);
     });
 
@@ -36,7 +51,7 @@ export default function DashboardPage() {
   const normalizedSessions = useMemo(() => {
     return sessions
       .map((session) => {
-        const startDate = session.date && session.time ? new Date(`${session.date}T${session.time}`) : null;
+        const startDate = parseISTDate(session.date, session.time);
         const durationMinutes = Number(session.duration || 0);
         const startMs = startDate ? startDate.getTime() : null;
         const endMs = startMs !== null ? startMs + durationMinutes * 60000 : null;
@@ -52,7 +67,9 @@ export default function DashboardPage() {
           isEnded,
           isClosedForRegistration,
           minutesUntilStart,
-          isRegistered: registeredSessionIds.has(session.id),
+          isRegistered: session.isFreeWebinar
+            ? Boolean(freeWebinarRegistration)
+            : registeredSessionIds.has(session.id),
         };
       })
       .sort((a, b) => (a.startDate?.getTime?.() ?? 0) - (b.startDate?.getTime?.() ?? 0));
@@ -70,6 +87,27 @@ export default function DashboardPage() {
   }, [normalizedSessions]);
 
   const visibleSessions = tabData[activeTab] || [];
+  const sessionColumns = [
+    { header: "Session", accessorKey: "title" },
+    { header: "Date", accessorKey: "date" },
+    { header: "Time", accessorKey: "time", cell: ({ row }) => `${formatTimeIST(row.original.time)} IST` },
+    { header: "Duration", accessorKey: "duration", cell: ({ row }) => `${row.original.duration} mins` },
+    {
+      header: "Status",
+      id: "status",
+      accessorFn: (session) => session.isEnded ? "Session Ended" : session.isClosedForRegistration ? "Closed" : session.isRegistered ? "Registered" : "Open",
+      cell: ({ row }) => {
+        const session = row.original;
+        const status = session.isEnded ? "Session Ended" : session.isClosedForRegistration ? "Closed" : session.isRegistered ? "Registered" : "Open";
+        return <span style={session.isEnded ? styles.statusEnded : session.isClosedForRegistration ? styles.statusClosed : session.isRegistered ? styles.status : styles.statusMuted}>{status}</span>;
+      },
+    },
+    {
+      header: "Actions",
+      id: "actions",
+      cell: ({ row }) => <Link href={row.original.isFreeWebinar ? "/#webinar" : `/dashboard/sessions/${row.original.id}`} style={styles.linkButton}>View Details</Link>,
+    },
+  ];
 
   return (
     <main style={styles.page}>
@@ -92,11 +130,11 @@ export default function DashboardPage() {
               </div>
               <div style={styles.statCard}>
                 <span style={styles.statLabel}>My registrations</span>
-                <strong style={styles.statValue}>{registrations.length}</strong>
+                <strong style={styles.statValue}>{registrations.length + (freeWebinarRegistration ? 1 : 0)}</strong>
               </div>
             </section>
 
-            <section style={styles.section}>
+              <section style={styles.section}>
               <div style={styles.sectionHeader}>
                 <h2 style={styles.sectionTitle}>Webinars</h2>
                 <span style={styles.sectionBadge}>Overview</span>
@@ -115,37 +153,7 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              <div style={styles.grid}>
-                {visibleSessions.length ? (
-                  visibleSessions.map((session) => (
-                    <article key={session.id} style={styles.card}>
-                      <div style={styles.cardHeader}>
-                        <span style={styles.cardCategory}>{session.title}</span>
-                        {session.isEnded ? (
-                          <span style={styles.statusEnded}>Session Ended</span>
-                        ) : session.isClosedForRegistration ? (
-                          <span style={styles.statusClosed}>Closed</span>
-                        ) : session.isRegistered ? (
-                          <span style={styles.status}>Registered</span>
-                        ) : (
-                          <span style={styles.statusMuted}>Open</span>
-                        )}
-                      </div>
-
-                      <h3 style={styles.cardTitle}>{session.title}</h3>
-                      <p style={styles.cardMeta}>Date: {session.date}</p>
-                      <p style={styles.cardMeta}>Time: {session.time}</p>
-                      <p style={styles.cardMeta}>Duration: {session.duration} mins</p>
-
-                      <div style={styles.cardActions}>
-                        <Link href={`/dashboard/sessions/${session.id}`} style={styles.linkButton}>View Details</Link>
-                      </div>
-                    </article>
-                  ))
-                ) : (
-                  <div style={styles.emptyState}>No sessions in this tab.</div>
-                )}
-              </div>
+              <DataTable columns={sessionColumns} data={visibleSessions} emptyMessage="No sessions in this tab." />
             </section>
           </>
         )}

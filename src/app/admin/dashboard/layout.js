@@ -15,6 +15,7 @@ export default function AdminDashboardLayout({ children }) {
     { href: "/admin/dashboard", label: "Overview" },
     { href: "/admin/dashboard/sessions", label: "Sessions" },
     { href: "/admin/dashboard/sessions/create", label: "Create Session" },
+    { href: "/admin/dashboard/free-webinar", label: "Free Webinar" },
   ];
 
   const handleLogout = async () => {

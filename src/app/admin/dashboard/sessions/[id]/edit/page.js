@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSessionById, updateSession } from "../../../../../firebase/firestore";
+import { IST_TIMEZONE, formatTimeIST, parseTimeInput } from "../../../../../firebase/time";
 
 export default function EditSessionPage({ params }) {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function EditSessionPage({ params }) {
     meetLink: "",
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -24,7 +26,7 @@ export default function EditSessionPage({ params }) {
           title: session.title || "",
           description: session.description || "",
           date: session.date || "",
-          time: session.time || "",
+          time: session.time ? formatTimeIST(session.time) : "",
           duration: String(session.duration || 60),
           meetLink: session.meetLink || "",
         });
@@ -42,8 +44,16 @@ export default function EditSessionPage({ params }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setError("");
+    const normalizedTime = parseTimeInput(form.time);
+    if (!normalizedTime) {
+      setError("Enter time in 12-hour format, for example 07:00 PM.");
+      return;
+    }
     await updateSession(params.id, {
       ...form,
+      time: normalizedTime,
+      timezone: IST_TIMEZONE,
       duration: Number(form.duration),
     });
     router.push(`/admin/dashboard/sessions/${params.id}`);
@@ -59,9 +69,10 @@ export default function EditSessionPage({ params }) {
           <label style={styles.label}>Title<input name="title" value={form.title} onChange={handleChange} style={styles.input} required /></label>
           <label style={styles.label}>Description<textarea name="description" value={form.description} onChange={handleChange} style={styles.textarea} required /></label>
           <label style={styles.label}>Date<input name="date" type="date" value={form.date} onChange={handleChange} style={styles.input} required /></label>
-          <label style={styles.label}>Time<input name="time" type="time" value={form.time} onChange={handleChange} style={styles.input} required /></label>
+          <label style={styles.label}>Time (IST)<input name="time" type="text" placeholder="07:00 PM" value={form.time} onChange={handleChange} style={styles.input} required /></label>
           <label style={styles.label}>Duration<input name="duration" type="number" value={form.duration} onChange={handleChange} style={styles.input} required /></label>
           <label style={styles.label}>Google Meet Link<input name="meetLink" value={form.meetLink} onChange={handleChange} style={styles.input} /></label>
+          {error ? <p style={styles.error}>{error}</p> : null}
           <button type="submit" style={styles.button}>Update Session</button>
         </form>
       </div>
@@ -78,4 +89,5 @@ const styles = {
   input: { padding: "12px 14px", borderRadius: 10, border: "1px solid #e8dbbf", fontSize: 16 },
   textarea: { minHeight: 120, padding: "12px 14px", borderRadius: 10, border: "1px solid #e8dbbf", fontSize: 16, resize: "vertical" },
   button: { background: "#1a201e", color: "#fff", border: 0, borderRadius: 10, padding: "14px 18px", fontWeight: 700, cursor: "pointer" },
+  error: { color: "#b42318", fontWeight: 600 },
 };
