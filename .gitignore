@@ -41,6 +41,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-*.json
 
 binme-5123-firebase-adminsdk-fbsvc-693ea471fc.json
