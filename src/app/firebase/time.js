@@ -32,3 +32,13 @@ export function parseISTDate(date, time) {
   const parsed = new Date(`${date}T${time}:00+05:30`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
+
+export function isSessionJoinable(session, now = Date.now()) {
+  const startDate = parseISTDate(session?.date, session?.time);
+  const durationMinutes = Number(session?.duration || 0);
+  if (!startDate || durationMinutes <= 0) return false;
+
+  const startMs = startDate.getTime();
+  const endMs = startMs + durationMinutes * 60000;
+  return now >= startMs - 5 * 60000 && now <= endMs;
+}

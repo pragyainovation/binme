@@ -12,7 +12,7 @@ import {
   getRegistrationsByUser,
   getSessions,
 } from "../firebase/firestore";
-import { formatTimeIST, parseISTDate } from "../firebase/time";
+import { formatTimeIST, isSessionJoinable, parseISTDate } from "../firebase/time";
 
 const tabs = ["Upcoming", "Completed", "Closed", "Registered"];
 
@@ -24,6 +24,12 @@ export default function DashboardPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Upcoming");
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -55,7 +61,6 @@ export default function DashboardPage() {
         const durationMinutes = Number(session.duration || 0);
         const startMs = startDate ? startDate.getTime() : null;
         const endMs = startMs !== null ? startMs + durationMinutes * 60000 : null;
-        const now = Date.now();
         const minutesUntilStart = startMs !== null ? (startMs - now) / 60000 : null;
         const isEnded = endMs !== null ? now > endMs : false;
         const isClosedForRegistration = minutesUntilStart !== null && minutesUntilStart <= 5 && minutesUntilStart >= 0;
@@ -73,7 +78,7 @@ export default function DashboardPage() {
         };
       })
       .sort((a, b) => (a.startDate?.getTime?.() ?? 0) - (b.startDate?.getTime?.() ?? 0));
-  }, [sessions, registeredSessionIds]);
+  }, [sessions, registeredSessionIds, now]);
 
   const tabData = useMemo(() => {
     const registeredSessions = normalizedSessions.filter((session) => session.isRegistered);
@@ -105,7 +110,15 @@ export default function DashboardPage() {
     {
       header: "Actions",
       id: "actions",
-      cell: ({ row }) => <Link href={row.original.isFreeWebinar ? "/dashboard/free-webinar" : `/dashboard/sessions/${row.original.id}`} style={styles.linkButton}>View Details</Link>,
+      cell: ({ row }) => {
+        const session = row.original;
+        const canJoin = session.isRegistered && session.meetLink && isSessionJoinable(session, now);
+        return canJoin ? (
+          <a href={session.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton}>Join Webinar</a>
+        ) : (
+          <Link href={session.isFreeWebinar ? "/dashboard/free-webinar" : `/dashboard/sessions/${session.id}`} style={styles.linkButton}>View Details</Link>
+        );
+      },
     },
   ];
 

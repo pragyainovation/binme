@@ -11,24 +11,33 @@ import {
   getRegistrationsByUser,
   getSessionById,
 } from "../../firebase/firestore";
-
-const registrationColumns = [
-  { header: "Session", id: "title", accessorFn: (item) => item.freeWebinar?.title || item.session?.title || "Session" },
-  { header: "Date", id: "date", accessorFn: (item) => item.freeWebinar?.date || item.session?.date || "-" },
-  { header: "Time", id: "time", accessorFn: (item) => item.freeWebinar?.time || item.session?.time || "-" },
-  { header: "Type", id: "type", accessorFn: (item) => item.freeWebinar ? "Free webinar" : "Session" },
-  {
-    header: "Actions",
-    id: "actions",
-    cell: ({ row }) => row.original.freeWebinar ? (
-      row.original.freeWebinar.meetLink ? <a href={row.original.freeWebinar.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton}>Join Webinar</a> : "-"
-    ) : <Link href={`/dashboard/sessions/${row.original.sessionId}`} style={styles.linkButton}>View Session</Link>,
-  },
-];
+import { isSessionJoinable } from "../../firebase/time";
 
 export default function MyRegistrationsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(() => Date.now());
+
+  const registrationColumns = [
+    { header: "Session", id: "title", accessorFn: (item) => item.freeWebinar?.title || item.session?.title || "Session" },
+    { header: "Date", id: "date", accessorFn: (item) => item.freeWebinar?.date || item.session?.date || "-" },
+    { header: "Time", id: "time", accessorFn: (item) => item.freeWebinar?.time || item.session?.time || "-" },
+    { header: "Type", id: "type", accessorFn: (item) => item.freeWebinar ? "Free webinar" : "Session" },
+    {
+      header: "Actions",
+      id: "actions",
+      cell: ({ row }) => row.original.freeWebinar ? (
+        row.original.freeWebinar.meetLink && isSessionJoinable(row.original.freeWebinar, now) ? <a href={row.original.freeWebinar.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton}>Join Webinar</a> : <Link href="/dashboard/free-webinar" style={styles.linkButton}>View Details</Link>
+      ) : row.original.session?.meetLink && isSessionJoinable(row.original.session, now) ? (
+        <a href={row.original.session.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton}>Join Webinar</a>
+      ) : <Link href={`/dashboard/sessions/${row.original.sessionId}`} style={styles.linkButton}>View Details</Link>,
+    },
+  ];
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -37,10 +46,11 @@ export default function MyRegistrationsPage() {
       const registrationList = await getRegistrationsByUser(user.uid);
       const sessionPromises = registrationList.map(async (registration) => {
         const session = await getSessionById(registration.sessionId);
-        return { ...registration, session };
+        return session ? { ...registration, session } : null;
       });
 
-      const transformed = await Promise.all(sessionPromises);
+      const transformed = (await Promise.all(sessionPromises)).filter(Boolean);
+
       const freeRegistrations = await claimFreeWebinarRegistrations(user);
       const freeItems = await Promise.all(freeRegistrations.map(async (registration) => ({
         ...registration,

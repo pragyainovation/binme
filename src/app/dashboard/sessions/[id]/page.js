@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../../firebase/config";
 import { getSessionById, isUserRegistered, registerForSession } from "../../../firebase/firestore";
-import { formatTimeIST, parseISTDate } from "../../../firebase/time";
+import { formatTimeIST, isSessionJoinable, parseISTDate } from "../../../firebase/time";
 
 export default function SessionDetailPage({ params }) {
   const [session, setSession] = useState(null);
@@ -76,7 +76,7 @@ export default function SessionDetailPage({ params }) {
   const sessionEnded = sessionTiming?.ended ?? false;
 
   const showJoinButton = Boolean(
-    sessionTiming?.running &&
+    isSessionJoinable(session) &&
     session?.status !== "cancelled" &&
     session?.meetLink &&
     alreadyRegistered

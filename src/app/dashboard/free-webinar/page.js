@@ -9,7 +9,7 @@ import {
   getUserProfile,
   registerForFreeWebinar,
 } from "../../firebase/firestore";
-import { formatTimeIST, parseISTDate } from "../../firebase/time";
+import { formatTimeIST, isSessionJoinable, parseISTDate } from "../../firebase/time";
 
 export default function FreeWebinarDetailPage() {
   const [webinar, setWebinar] = useState(null);
@@ -64,6 +64,7 @@ export default function FreeWebinarDetailPage() {
         name: profile?.name || user.displayName || "",
         email: user.email || "",
         mobile: profile?.mobile || "",
+        userId: user.uid,
       });
       setRegistration({ webinarId: webinar.id });
       setMessage(result.alreadyRegistered ? "Already Registered" : "Registration successful.");
@@ -89,7 +90,7 @@ export default function FreeWebinarDetailPage() {
   const webinarEnded = webinarTiming?.ended ?? false;
 
   const showJoinButton = Boolean(
-    webinarTiming?.running &&
+    isSessionJoinable(webinar) &&
     webinar?.meetLink &&
     registration
   );

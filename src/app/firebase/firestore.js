@@ -34,6 +34,12 @@ export async function getUserProfile(uid) {
   return snap.exists() ? snap.data() : null;
 }
 
+export async function savePushToken(uid, token) {
+  await updateDoc(doc(db, "users", uid), {
+    pushTokens: arrayUnion(token),
+  });
+}
+
 export async function getAllUsers() {
   const snap = await getDocs(collection(db, "users"));
   return snap.docs.map((docItem) => ({ id: docItem.id, ...docItem.data() }));
@@ -115,7 +121,7 @@ export async function registerForFreeWebinar(webinarId, registrationData) {
     email: registrationData.email.trim(),
     emailNormalized: registrationData.email.trim().toLowerCase(),
     mobile: registrationData.mobile.trim(),
-    userId: null,
+    userId: registrationData.userId || null,
     status: "registered",
     registeredAt: serverTimestamp(),
   });

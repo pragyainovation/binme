@@ -1,3 +1,29 @@
+# BinMe
+
+## Push notifications
+
+User dashboard access requires browser notifications. Add the Firebase Cloud Messaging Web Push certificate key to `.env.local`:
+
+```env
+NEXT_PUBLIC_FIREBASE_VAPID_KEY=your_firebase_web_push_certificate_key
+IsNotificationStore=true
+```
+
+The reminder endpoint is `GET /api/notifications/remind`. Run it from a scheduler every minute with these server-only variables:
+
+```env
+FIREBASE_PROJECT_ID=binme-5123b
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-...@binme-5123b.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+NOTIFICATION_CRON_SECRET=long-random-secret
+```
+
+Send the secret in the `x-cron-secret` header. The endpoint checks registered sessions and free webinars within two minutes of the 30-minute reminder point and records each sent reminder to prevent duplicates. Browser push requires HTTPS in production (localhost is allowed during development).
+
+Notification history is written to the `notifications` collection only when `IsNotificationStore` is exactly `true`. Any other value, including an unset variable, skips that write.
+
+## Getting started
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
