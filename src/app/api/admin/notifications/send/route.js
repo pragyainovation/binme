@@ -1,27 +1,6 @@
-import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
-import { getMessaging } from "firebase-admin/messaging";
+import { getAdminServices } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
-
-function getAdminApp() {
-  if (getApps().length) return getApps()[0];
-
-  const privateKey = (process.env.FIREBASE_PRIVATE_KEY || process.env.NEXT_PUBLIC_FIREBASE_PRIVATE_KEY)?.replace(/\\n/g, "\n");
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL || process.env.NEXT_PUBLIC_FIREBASE_CLIENT_EMAIL;
-  if (!clientEmail || !privateKey) {
-    throw new Error("Firebase Admin credentials are not configured.");
-  }
-
-  return initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-      clientEmail,
-      privateKey,
-    }),
-  });
-}
 
 function getBearerToken(request) {
   const header = request.headers.get("authorization") || "";
@@ -41,27 +20,25 @@ export async function POST(request) {
     const token = getBearerToken(request);
     if (!token) return Response.json({ error: "Authentication required." }, { status: 401 });
 
-    const app = getAdminApp();
-    const adminUser = await getAuth(app).verifyIdToken(token);
-    const db = getFirestore(app);
+    const { adminAuth, adminDb: db, adminMessaging: messaging } = getAdminServices();
+    const adminUser = await adminAuth.verifyIdToken(token);
     const adminProfile = await db.collection("users").doc(adminUser.uid).get();
     if (adminProfile.data()?.role !== "admin") {
       return Response.json({ error: "Admin access required." }, { status: 403 });
     }
 
     const { eventId, eventType } = await request.json();
-    if (!eventId || !["session", "webinar"].includes(eventType)) {
+    if (!eventId || !["session", "webinar", "event"].includes(eventType)) {
       return Response.json({ error: "A valid event is required." }, { status: 400 });
     }
-    const collection = eventType === "webinar" ? "freeWebinars" : "sessions";
-    const registrationCollection = eventType === "webinar" ? "freeWebinarRegistrations" : "registrations";
+    const collection = "events";
+    const registrationCollection = "eventRegistrations";
     const eventSnap = await db.collection(collection).doc(eventId).get();
     if (!eventSnap.exists) return Response.json({ error: "Event not found." }, { status: 404 });
 
     const event = eventSnap.data();
-    const registrationField = eventType === "webinar" ? "webinarId" : "sessionId";
     const registrationSnap = await db.collection(registrationCollection)
-      .where(registrationField, "==", eventId)
+      .where("eventId", "==", eventId)
       .where("status", "==", "registered")
       .get();
     const usersSnap = await db.collection("users").get();
@@ -85,7 +62,6 @@ export async function POST(request) {
 
     if (!tokens.length) return Response.json({ registered: registrationSnap.size, sent: 0, failed: 0 });
 
-    const messaging = getMessaging(app);
     let sent = 0;
     let failed = 0;
     for (const tokenBatch of chunks(tokens, 500)) {
@@ -93,7 +69,7 @@ export async function POST(request) {
         tokens: tokenBatch,
         notification: {
           title: event.title || "BinMe notification",
-          body: `Your registered ${eventType === "webinar" ? "free webinar" : "session"} is about to begin.`,
+          body: "Your registered event is about to begin.",
         },
         data: { eventId, eventType },
       });
