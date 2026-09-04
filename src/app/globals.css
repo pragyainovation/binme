@@ -1109,6 +1109,20 @@ footer { padding: 26px 0 40px; }
 .profile-hint { margin: 0; color: var(--ink-soft); font-size: 0.9rem; line-height: 1.5; }
 .profile-message { margin: 0; color: #17663b; font-weight: 700; }
 .profile-submit { width: fit-content; border: 0; border-radius: var(--radius-control); padding: 12px 18px; background: var(--ink); color: #fff; font-weight: 800; }
+.complaint-page { min-height: 100%; padding: 40px 20px; background: linear-gradient(180deg, #f7f1e8, #eef4f8); }
+.complaint-container, .complaint-detail-card { width: min(100%, 900px); margin: 0 auto; }
+.complaint-container { display: grid; gap: 24px; }
+.complaint-heading, .complaint-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.complaint-heading p, .complaint-detail-header > div > p { margin: 0 0 7px; color: var(--orange); font-size: .74rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.complaint-heading h1, .complaint-detail-header h1 { margin: 0; font-size: clamp(2rem, 4vw, 3rem); }
+.complaint-heading span { display: block; margin-top: 9px; color: var(--ink-soft); }
+.complaint-total { padding: 9px 12px; border-radius: 999px; background: #e2edff; color: #2941a8; white-space: nowrap; }
+.complaint-form, .complaint-list, .complaint-detail-card { padding: 24px; border: 1px solid rgba(23,33,31,.08); border-radius: 20px; background: var(--paper); box-shadow: 0 16px 34px rgba(23,33,31,.05); }
+.complaint-form { display: grid; gap: 14px; }.complaint-form h2, .complaint-list h2 { margin: 0 0 4px; font-size: 1.25rem; }.complaint-form label { display: grid; gap: 7px; font-weight: 750; }.complaint-form input, .complaint-form textarea, .complaint-reply textarea { width: 100%; padding: 12px 13px; border: 1px solid #ded3c2; border-radius: 10px; background: #fff; }.complaint-form textarea, .complaint-reply textarea { min-height: 120px; resize: vertical; }
+.complaint-primary, .complaint-close { width: fit-content; border: 0; border-radius: 10px; padding: 12px 16px; font-weight: 800; }.complaint-primary { background: var(--ink); color: #fff; }.complaint-close { margin-top: 14px; background: #fff0ea; color: #9a3d20; }.complaint-feedback { margin: 0; color: #17663b; font-weight: 700; }
+.complaint-list { display: grid; gap: 10px; }.complaint-list-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 15px 16px; border: 1px solid rgba(23,33,31,.08); border-radius: 12px; background: #fff; transition: transform .18s ease, border-color .18s ease; }.complaint-list-item:hover { transform: translateY(-1px); border-color: rgba(23,33,31,.22); }.complaint-list-item strong { display: block; }.complaint-list-item small { display: block; margin-top: 5px; color: var(--ink-soft); }
+.complaint-status { display: inline-flex; align-items: center; justify-content: center; min-width: 82px; padding: 6px 9px; border-radius: 999px; background: #fff1cc; color: #765400; font-size: .75rem; font-weight: 800; text-transform: capitalize; }.complaint-status.closed { background: #e6e9e8; color: #45504d; }.complaint-status.in-progress { background: #e2edff; color: #2941a8; }
+.complaint-detail-card { padding: 28px; }.complaint-description { margin: 20px 0; color: var(--ink-soft); line-height: 1.65; }.complaint-conversation { display: grid; gap: 12px; margin: 24px 0; padding: 18px; border-radius: 14px; background: #f7f8f7; }.complaint-message { max-width: min(82%, 620px); padding: 13px 15px; border-radius: 14px 14px 14px 4px; background: #e9eeef; }.complaint-message.own { justify-self: end; border-radius: 14px 14px 4px 14px; background: #dcf2c9; }.complaint-message strong { font-size: .82rem; }.complaint-message p { margin: 5px 0 0; line-height: 1.5; }.complaint-reply { display: grid; gap: 12px; }.complaint-empty { color: var(--ink-soft); }.complaint-error { color: #b42318; font-weight: 700; }
 
 @media (max-width: 980px) {
   .nav { min-height: 72px; }
@@ -1161,6 +1175,7 @@ footer { padding: 26px 0 40px; }
   .profile-page { padding: 24px 16px; }
   .profile-card { padding: 24px 18px; }
   .profile-submit { width: 100%; }
+  .complaint-page { padding: 24px 16px; }.complaint-form, .complaint-list, .complaint-detail-card { padding: 18px; }.complaint-heading, .complaint-detail-header { flex-direction: column; }.complaint-list-item { align-items: flex-start; }.complaint-primary, .complaint-close { width: 100%; }.complaint-message { max-width: 92%; }
 
   .nav-links { display: none; }
   .nav-actions { display: none; }

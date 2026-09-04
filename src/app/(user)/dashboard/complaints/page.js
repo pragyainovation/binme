@@ -36,16 +36,17 @@ export default function ComplaintsPage() {
     } catch (error) { setMessage(error.message || "Unable to submit complaint."); }
   };
 
-  return <main style={styles.page}><div style={styles.container}>
-    <h1>Complaints</h1>
-    <form onSubmit={submit} style={styles.form}>
+  return <main className="complaint-page"><div className="complaint-container">
+    <header className="complaint-heading"><div><p>Support center</p><h1>Complaints</h1><span>Tell us what happened and follow every reply here.</span></div></header>
+    <form onSubmit={submit} className="complaint-form">
+      <h2>Raise a complaint</h2>
       <label>Subject<input value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} required /></label>
       <label>Describe the issue<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} required /></label>
-      <button type="submit">Submit Complaint</button>
-      {message ? <p>{message}</p> : null}
+      <button type="submit" className="complaint-primary">Submit Complaint</button>
+      {message ? <p className="complaint-feedback">{message}</p> : null}
     </form>
-    <h2>Submitted complaints</h2>
-    {loading ? <p>Loading complaints...</p> : complaints.length ? complaints.map((complaint) => <Link key={complaint.id} href={`/dashboard/complaints/${complaint.id}`} style={styles.item}><strong>{complaint.subject}</strong><span>{complaint.status}</span></Link>) : <p>No complaints submitted yet.</p>}
+    <section className="complaint-list"><h2>Submitted complaints</h2>
+    {loading ? <p className="complaint-empty">Loading complaints...</p> : complaints.length ? complaints.map((complaint) => <Link key={complaint.id} href={`/dashboard/complaints/${complaint.id}`} className="complaint-list-item"><strong>{complaint.subject}</strong><span className={`complaint-status ${complaint.status}`}>{complaint.status}</span></Link>) : <p className="complaint-empty">No complaints submitted yet.</p>}</section>
   </div></main>;
 }
 
