@@ -40,7 +40,9 @@ export default function SignupPage() {
         mobile: form.mobile,
         password: form.password,
       });
-      router.push("/dashboard");
+      const pendingEventId = localStorage.getItem("binme:pendingFreeDemoEventId");
+      localStorage.removeItem("binme:pendingFreeDemoEventId");
+      router.push(pendingEventId ? `/dashboard/events/${pendingEventId}` : "/dashboard");
     } catch (submitError) {
       setError(submitError.message || "Sign up failed.");
     } finally {

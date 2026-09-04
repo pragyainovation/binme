@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { browserAuth as auth } from "@/lib/firebase/client-auth";
-import { getLandingEvents, getUserProfile, registerForEventGuest } from "@/features";
+import { getLandingEvents, getUserProfile } from "@/features";
 import { formatDateIST, formatTimeIST } from "@/lib/time/ist";
 
 const Arrow = () => (
@@ -22,10 +22,6 @@ export default function Home() {
   const [landingEvents, setLandingEvents] = useState([]);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [webinarLoading, setWebinarLoading] = useState(true);
-  const [registrationOpen, setRegistrationOpen] = useState(false);
-  const [registrationLoading, setRegistrationLoading] = useState(false);
-  const [registrationError, setRegistrationError] = useState("");
-  const [registrationForm, setRegistrationForm] = useState({ name: "", email: "", mobile: "" });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -58,39 +54,15 @@ export default function Home() {
   };
 
   const openWebinarRegistration = () => {
-    setNotice("");
-    setRegistrationError("");
-    setRegistrationOpen(true);
+    if (!webinar) return;
+    localStorage.setItem("binme:pendingFreeDemoEventId", webinar.id);
+    router.push("/signup");
   };
 
   const showEvent = (index) => {
     const nextIndex = (index + landingEvents.length) % landingEvents.length;
     setCarouselIndex(nextIndex);
     setWebinar(landingEvents[nextIndex]);
-  };
-
-  const handleRegistrationChange = (event) => {
-    const { name, value } = event.target;
-    setRegistrationForm((previous) => ({ ...previous, [name]: value }));
-  };
-
-  const handleRegistrationSubmit = async (event) => {
-    event.preventDefault();
-    if (!webinar) return;
-
-    setRegistrationLoading(true);
-    setRegistrationError("");
-    try {
-      const result = await registerForEventGuest(webinar.id, registrationForm);
-      if (!result.alreadyRegistered) localStorage.setItem(`binme:event:${webinar.id}`, "registered");
-      setRegistrationOpen(false);
-      setRegistrationForm({ name: "", email: "", mobile: "" });
-      setNotice(result.alreadyRegistered ? "This email is already registered for the free demo." : "You are registered. Sign up with this email to see it in your dashboard.");
-    } catch (submitError) {
-      setRegistrationError(submitError.message || "Unable to complete registration.");
-    } finally {
-      setRegistrationLoading(false);
-    }
   };
 
   const goToLogin = () => router.push("/login");
@@ -314,26 +286,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {registrationOpen && webinar && (
-        <div className="webinar-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setRegistrationOpen(false)}>
-          <section className="webinar-modal" role="dialog" aria-modal="true" aria-labelledby="webinar-registration-title">
-            <button type="button" className="webinar-modal-close" aria-label="Close registration" onClick={() => setRegistrationOpen(false)}>×</button>
-            <p className="eyebrow orange">Free webinar</p>
-            <h2 id="webinar-registration-title">Reserve your spot.</h2>
-            <p>Tell us where to send your webinar details.</p>
-            <form className="webinar-registration-form" onSubmit={handleRegistrationSubmit}>
-              <label>Name<input name="name" value={registrationForm.name} onChange={handleRegistrationChange} required /></label>
-              <label>Email<input name="email" type="email" value={registrationForm.email} onChange={handleRegistrationChange} required /></label>
-              <label>Mobile Number<input name="mobile" type="tel" value={registrationForm.mobile} onChange={handleRegistrationChange} required /></label>
-              {registrationError && <p className="notice error" role="alert">{registrationError}</p>}
-              <button type="submit" className="button button-dark" disabled={registrationLoading}>
-                {registrationLoading ? "Registering..." : "Register for free"}
-              </button>
-            </form>
-          </section>
-        </div>
-      )}
 
       <section className="story section" id="stories">
         <div className="container story-grid">
