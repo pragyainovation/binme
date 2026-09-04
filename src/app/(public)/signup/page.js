@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signUpWithEmail } from "@/features/auth/auth.service";
 import PasswordInput from "@/components/ui/PasswordInput";
+import { registerForSession } from "@/features/registrations/registration.repository";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -34,13 +35,14 @@ export default function SignupPage() {
     }
 
     try {
-      await signUpWithEmail({
+      const user = await signUpWithEmail({
         name: form.name,
         email: form.email,
         mobile: form.mobile,
         password: form.password,
       });
       const pendingEventId = localStorage.getItem("binme:pendingFreeDemoEventId");
+      if (pendingEventId) await registerForSession(user.uid, pendingEventId);
       localStorage.removeItem("binme:pendingFreeDemoEventId");
       router.push(pendingEventId ? `/dashboard/events/${pendingEventId}` : "/dashboard");
     } catch (submitError) {

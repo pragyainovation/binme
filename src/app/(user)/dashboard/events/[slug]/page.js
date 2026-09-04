@@ -31,16 +31,17 @@ export default function SessionDetailPage({ params }) {
         const found = await getSessionById(sessionId);
         setSession(found);
 
+        const eventId = found?.id || sessionId;
         const unsub = onAuthStateChanged(auth, async (currentUser) => {
           if (!currentUser) {
-            setAlreadyRegistered(localStorage.getItem(`binme:event:${sessionId}`) === "registered");
+            setAlreadyRegistered(localStorage.getItem(`binme:event:${eventId}`) === "registered");
             setLoading(false);
             return;
           }
           setUser(currentUser);
 
-          const isRegistered = await isUserRegistered(currentUser.uid, sessionId);
-          setAlreadyRegistered(isRegistered || localStorage.getItem(`binme:event:${sessionId}`) === "registered");
+          const isRegistered = await isUserRegistered(currentUser.uid, eventId);
+          setAlreadyRegistered(isRegistered || localStorage.getItem(`binme:event:${eventId}`) === "registered");
           setLoading(false);
         });
 

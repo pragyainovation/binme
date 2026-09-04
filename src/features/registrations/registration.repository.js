@@ -1,20 +1,17 @@
-import { addDoc, arrayUnion, collection, doc, getDoc, getDocs, increment, query, runTransaction, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, getDocs, increment, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { browserDb } from "@/lib/firebase/client-firestore";
 
 const records = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-export async function isUserRegistered(userId, sessionId) { return !(await getDocs(query(collection(browserDb, "eventRegistrations"), where("userId", "==", userId), where("eventId", "==", sessionId)))).empty; }
+export async function isUserRegistered(userId, sessionId) { return (await getDoc(doc(browserDb, "eventRegistrations", `${userId}_${sessionId}`))).exists(); }
 export async function registerForSession(userId, sessionId) {
   const registrationRef = doc(browserDb, "eventRegistrations", `${userId}_${sessionId}`);
   const sessionRef = doc(browserDb, "events", sessionId);
-  return runTransaction(browserDb, async (transaction) => {
-    const [existing, session] = await Promise.all([transaction.get(registrationRef), transaction.get(sessionRef)]);
-    if (existing.exists()) return { alreadyRegistered: true };
-    if (!session.exists()) throw new Error("Session not found.");
-    if (session.data().accessType === "paid") throw new Error("Complete payment before registering for this session.");
-    transaction.set(registrationRef, { userId, eventId: sessionId, status: "registered", registeredAt: serverTimestamp() });
-    transaction.update(sessionRef, { registrationCount: increment(1), registeredUsers: arrayUnion(userId), updatedAt: serverTimestamp() });
-    return { alreadyRegistered: false, id: registrationRef.id };
-  });
+  const [existing, session] = await Promise.all([getDoc(registrationRef), getDoc(sessionRef)]);
+  if (existing.exists()) return { alreadyRegistered: true };
+  if (!session.exists()) throw new Error("Event not found.");
+  if (session.data().accessType === "paid") throw new Error("Complete payment before registering for this event.");
+  await setDoc(registrationRef, { userId, eventId: sessionId, status: "registered", registeredAt: serverTimestamp() });
+  return { alreadyRegistered: false, id: registrationRef.id };
 }
 export async function registerForEventGuest(eventId, data) {
   const emailNormalized = data.email.trim().toLowerCase();
