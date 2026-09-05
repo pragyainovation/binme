@@ -100,8 +100,8 @@ export default function SessionDetailPage({ params }) {
             const verifyResponse = await fetch("/api/payments/razorpay/verify", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(payment) });
             const result = await verifyResponse.json();
             if (!verifyResponse.ok) throw new Error(result.error || "Payment verification failed.");
-            setAlreadyRegistered(true);
-            setMessage("Payment successful. You are registered.");
+            setAlreadyRegistered(Boolean(result.success));
+            setMessage(result.success ? "Payment successful. You are registered." : (result.message || "Payment is being confirmed."));
             resolve();
           } catch (error) { reject(error); }
         }, modal: { ondismiss: resolve } });

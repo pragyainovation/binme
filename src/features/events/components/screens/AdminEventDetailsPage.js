@@ -9,6 +9,8 @@ const userColumns = [
   { header: "Name", accessorKey: "name", cell: ({ row }) => row.original.name || "Unnamed" },
   { header: "Email", accessorKey: "email", cell: ({ row }) => row.original.email || "-" },
   { header: "Mobile", accessorKey: "mobile", cell: ({ row }) => row.original.mobile || "-" },
+  { header: "Registration", accessorKey: "registrationStatus", cell: ({ row }) => row.original.registrationStatus || "Registered" },
+  { header: "Payment", accessorKey: "paymentStatus", cell: ({ row }) => row.original.paymentStatus || "Free" },
 ];
 
 export default function AdminSessionDetailPage({ params }) {
@@ -43,7 +45,10 @@ export default function AdminSessionDetailPage({ params }) {
       const allUsers = await getAllUsers();
       const userMap = Object.fromEntries(allUsers.map((user) => [user.uid, user]));
       const registeredUsers = registrations
-        .map((reg) => userMap[reg.userId])
+        .map((reg) => {
+          const user = userMap[reg.userId];
+          return user ? { ...user, registrationStatus: reg.status, paymentStatus: reg.paymentStatus === "captured" ? "Paid" : (reg.paymentStatus || "Free") } : null;
+        })
         .filter(Boolean);
 
       setUsers(registeredUsers);
