@@ -130,6 +130,7 @@ export default function SessionDetailPage({ params }) {
     };
   }, [session, now]);
   const sessionEnded = sessionTiming?.ended ?? false;
+  const sessionCancelled = session?.status === "cancelled";
 
   const showJoinButton = Boolean(
     isSessionJoinable(session) &&
@@ -138,8 +139,8 @@ export default function SessionDetailPage({ params }) {
     alreadyRegistered
   );
 
-  const showRegisterButton = !sessionEnded && !alreadyRegistered && session?.accessType !== "paid";
-  const showPaymentButton = !sessionEnded && !alreadyRegistered && session?.accessType === "paid";
+  const showRegisterButton = !sessionCancelled && !sessionEnded && !alreadyRegistered && session?.accessType !== "paid";
+  const showPaymentButton = !sessionCancelled && !sessionEnded && !alreadyRegistered && session?.accessType === "paid";
 
   if (loading) return <div style={{ padding: 40 }}>Loading session...</div>;
   if (!session) return <div style={{ padding: 40 }}>Session not found.</div>;
@@ -159,7 +160,14 @@ export default function SessionDetailPage({ params }) {
 
         <p style={styles.description}>{session.description}</p>
 
-        {sessionEnded ? (
+        {sessionCancelled ? (
+          <div style={styles.cancelledBox} role="status">
+            <strong>This session has been cancelled.</strong>
+            {alreadyRegistered && session.accessType === "paid" ? (
+              <p>Your refund will be credited within 10–15 days after it is processed.</p>
+            ) : <p>This session is no longer available for registration.</p>}
+          </div>
+        ) : sessionEnded ? (
           <div style={styles.endedBox}>Session Ended</div>
         ) : showJoinButton ? (
           <div style={styles.noticeBox}>
@@ -168,7 +176,7 @@ export default function SessionDetailPage({ params }) {
           </div>
         ) : null}
 
-        {showRegisterButton ? (
+        {sessionCancelled ? null : showRegisterButton ? (
           <button onClick={handleRegister} disabled={registering} style={styles.button}>
             {registering ? "Registering..." : "Register Now"}
           </button>
@@ -234,6 +242,14 @@ const styles = {
     padding: "14px 16px",
     color: "#7a2a2a",
     fontWeight: 800,
+  },
+  cancelledBox: {
+    marginTop: 16,
+    background: "#fff1f1",
+    border: "1px solid #e1a8a8",
+    borderRadius: 12,
+    padding: "16px",
+    color: "#7a2a2a",
   },
   button: {
     background: "#16211f",

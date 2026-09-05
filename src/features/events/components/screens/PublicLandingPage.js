@@ -6,12 +6,15 @@ import { onAuthStateChanged } from "firebase/auth";
 import { browserAuth as auth } from "@/lib/firebase/client-auth";
 import { getLandingEvents, getUserProfile } from "@/features";
 import { formatDateIST, formatTimeIST } from "@/lib/time/ist";
+import { getSocialLinks } from "@/features/settings/site-settings.repository";
 
 const Arrow = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path d="M5 12h14M13 6l6 6-6 6" />
   </svg>
 );
+
+const socialLabels = { youtube: "YouTube", telegram: "Telegram", instagram: "Instagram", linkedin: "LinkedIn", facebook: "Facebook", whatsapp: "WhatsApp" };
 
 export default function Home() {
   const router = useRouter();
@@ -22,6 +25,7 @@ export default function Home() {
   const [landingEvents, setLandingEvents] = useState([]);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [webinarLoading, setWebinarLoading] = useState(true);
+  const [socialLinks, setSocialLinks] = useState({});
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -47,6 +51,10 @@ export default function Home() {
       .then((events) => { setLandingEvents(events); setWebinar(events[0] || null); })
       .catch(() => { setLandingEvents([]); setWebinar(null); })
       .finally(() => setWebinarLoading(false));
+  }, []);
+
+  useEffect(() => {
+    getSocialLinks().then(setSocialLinks).catch(() => setSocialLinks({}));
   }, []);
 
   const register = () => {
@@ -371,9 +379,9 @@ export default function Home() {
           </a>
           <p>Made for brave voices everywhere.</p>
           <div>
-            <a href="#top">Instagram</a>
-            <a href="#top">LinkedIn</a>
-            <a href="#top">YouTube</a>
+            {Object.entries(socialLinks).filter(([, url]) => url).map(([platform, url]) => <a key={platform} href={url} target="_blank" rel="noreferrer">{socialLabels[platform] || platform}</a>)}
+            <a href="/terms-and-conditions">Terms &amp; Conditions</a>
+            <a href="/privacy-policy">Privacy Policy</a>
           </div>
         </div>
       </footer>

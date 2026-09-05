@@ -117,6 +117,45 @@ export async function verifyRazorpayPayment(userId, { razorpay_order_id: orderId
   return { success: true, status: "captured" };
 }
 
+export async function markPaymentRefunded(adminUserId, { orderId }) {
+  if (!orderId) throw failure("Payment order is required.", 400);
+  const { adminDb: db } = getAdminServices();
+  const [adminSnap, paymentSnap] = await Promise.all([
+    db.collection("users").doc(adminUserId).get(),
+    db.collection("payments").doc(orderId).get(),
+  ]);
+  if (adminSnap.data()?.role !== "admin") throw failure("Admin access required.", 403);
+  if (!paymentSnap.exists) throw failure("Payment not found.", 404);
+  const payment = paymentSnap.data();
+  if (payment.status === "refunded") throw failure("This payment is already marked as refunded.", 409);
+  if (payment.status !== "captured") throw failure("Only captured payments can be marked as refunded.", 400);
+  const eventSnap = await db.collection("events").doc(payment.eventId).get();
+  if (!eventSnap.exists || eventSnap.data().status !== "cancelled") throw failure("Only payments for cancelled sessions can be marked as refunded.", 400);
+
+  const refundRef = db.collection("payments").doc(orderId).collection("refunds").doc(`manual-${Date.now()}`);
+  const batch = db.batch();
+  batch.set(refundRef, {
+    refundId: null,
+    amount: payment.amount,
+    currency: payment.currency || "INR",
+    status: "processed",
+    source: "razorpay_dashboard_manual",
+    markedBy: adminUserId,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.set(paymentSnap.ref, {
+    status: "refunded",
+    refundStatus: "processed",
+    refundSource: "razorpay_dashboard_manual",
+    refundedAt: FieldValue.serverTimestamp(),
+    refundedBy: adminUserId,
+    updatedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
+  await batch.commit();
+  return { success: true, status: "refunded" };
+}
+
 export function verifyRazorpayWebhookSignature(rawBody, signature) {
   const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
   if (!webhookSecret) throw failure("Razorpay webhook is not configured.", 503);

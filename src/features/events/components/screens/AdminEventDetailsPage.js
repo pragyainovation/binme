@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getRegistrationsBySession, getSessionById, getAllUsers } from "@/features";
 import { formatDateIST, formatTimeIST, parseISTDate } from "@/lib/time/ist";
 import DataTable from "@/components/ui/DataTable";
@@ -69,6 +70,7 @@ export default function AdminSessionDetailPage({ params }) {
         <p style={styles.meta}>Time: {formatTimeIST(session.time)} IST</p>
         <p style={styles.meta}>Duration: {session.duration} Minutes</p>
         <p style={styles.meta}>Registrations: {registrationCount}</p>
+        {session.accessType === "paid" ? <Link href={`/admin/dashboard/payments?eventId=${session.id}`} style={styles.paymentLink}>View payment IDs</Link> : null}
         {sessionRunning && session.meetLink ? (
           <a href={session.meetLink} target="_blank" rel="noreferrer" style={styles.joinButton}>Join Google Meet</a>
         ) : null}
@@ -85,4 +87,5 @@ const styles = {
   title: { fontSize: 38, marginBottom: 10 },
   meta: { margin: "6px 0", color: "#4e5653" },
   joinButton: { display: "inline-block", margin: "14px 0 22px", background: "#d9f95d", color: "#16211f", borderRadius: 10, padding: "12px 16px", fontWeight: 800, textDecoration: "none" },
+  paymentLink: { display: "inline-block", margin: "14px 0 22px", background: "#dfe8ff", color: "#2941a8", borderRadius: 10, padding: "12px 16px", fontWeight: 800, textDecoration: "none" },
 };

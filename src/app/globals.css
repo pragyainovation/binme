@@ -1098,6 +1098,11 @@ footer { padding: 26px 0 40px; }
 .profile-details span { color: var(--ink-soft); font-size: 0.78rem; font-weight: 750; letter-spacing: 0.05em; text-transform: uppercase; }
 .profile-details strong { overflow-wrap: anywhere; font-size: 1rem; }
 .profile-tab-copy { margin: 22px 0 0; color: var(--ink-soft); }
+.policy-editor-label { display: block; margin: 22px 0 8px; font-weight: 800; color: var(--ink); }
+.policy-editor { width: 100%; min-height: 320px; resize: vertical; border: 1px solid rgba(23, 33, 31, 0.18); border-radius: 12px; padding: 14px; color: var(--ink); background: #fffdf9; font: inherit; line-height: 1.6; }
+.social-links-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin: 22px 0; }
+.social-links-form label { display: grid; gap: 7px; color: var(--ink); font-weight: 800; }
+.social-links-form input { width: 100%; padding: 11px 12px; border: 1px solid rgba(23, 33, 31, 0.18); border-radius: 10px; color: var(--ink); background: #fffdf9; font: inherit; }
 .profile-password-form { display: grid; gap: 16px; margin-top: 28px; }
 .profile-password-form label { display: grid; gap: 7px; color: var(--ink); font-weight: 750; }
 .profile-password-form input { width: 100%; padding: 11px 13px; border: 1px solid #ded3c2; border-radius: var(--radius-control); background: #fff; color: var(--ink); }

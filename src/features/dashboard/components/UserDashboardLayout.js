@@ -15,6 +15,7 @@ export default function DashboardLayout({ children }) {
   const navItems = [
     { href: "/dashboard", label: "Overview" },
     { href: "/dashboard/registrations", label: "My Registrations" },
+    { href: "/dashboard/payments", label: "My Payments" },
     { href: "/dashboard/complaints", label: "Complaints" },
     { href: "/dashboard/profile", label: "Profile & Security" },
   ];

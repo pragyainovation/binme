@@ -15,6 +15,11 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
     }
 
+    function isRegisteredForEvent(eventId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/eventRegistrations/$(request.auth.uid + "_" + eventId));
+    }
+
     match /users/{userId} {
       allow create: if isOwner(userId);
       allow read, update: if isOwner(userId) || isAdmin();
@@ -26,7 +31,8 @@ service cloud.firestore {
     }
 
     match /events/{eventId} {
-      allow read: if resource.data.status == "active" || isAdmin();
+      // A registered learner must retain access to a cancelled session's details and refund notice.
+      allow read: if resource.data.status == "active" || isAdmin() || isRegisteredForEvent(eventId);
       allow create, update, delete: if isAdmin();
     }
 
@@ -46,6 +52,18 @@ service cloud.firestore {
     match /payments/{paymentId} {
       allow read: if isOwner(resource.data.userId) || isAdmin();
       allow write: if false;
+    }
+
+    match /sitePolicies/{policyId} {
+      allow read: if true;
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /siteSettings/{settingId} {
+      allow read: if true;
+      allow create, update: if isAdmin();
+      allow delete: if false;
     }
   }
 }

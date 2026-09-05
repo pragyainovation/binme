@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { onAuthStateChanged } from "firebase/auth";
 import { browserAuth } from "@/lib/firebase/client-auth";
 import { getUserProfile } from "@/features/users/user.repository";
 import PasswordChangeForm from "./PasswordChangeForm";
 import { disablePushNotifications, enablePushNotifications } from "@/features/notifications/notification.client";
+
+const PolicyEditor = dynamic(() => import("@/features/policies/components/PolicyEditor"), { ssr: false, loading: () => <p className="profile-tab-copy">Loading editor...</p> });
+const SocialLinksEditor = dynamic(() => import("@/features/settings/components/SocialLinksEditor"), { ssr: false, loading: () => <p className="profile-tab-copy">Loading social links...</p> });
 
 export default function ProfileSecurityTabs({ admin = false }) {
   const [activeTab, setActiveTab] = useState("profile");
@@ -55,18 +59,20 @@ export default function ProfileSecurityTabs({ admin = false }) {
       <button type="button" role="tab" aria-selected={activeTab === "profile"} className={activeTab === "profile" ? "active" : ""} onClick={() => setActiveTab("profile")}>Profile</button>
       <button type="button" role="tab" aria-selected={activeTab === "security"} className={activeTab === "security" ? "active" : ""} onClick={() => setActiveTab("security")}>Security</button>
       <button type="button" role="tab" aria-selected={activeTab === "notifications"} className={activeTab === "notifications" ? "active" : ""} onClick={() => setActiveTab("notifications")}>Notifications</button>
+      {admin ? <button type="button" role="tab" aria-selected={activeTab === "policies"} className={activeTab === "policies" ? "active" : ""} onClick={() => setActiveTab("policies")}>Terms + Policies</button> : null}
+      {admin ? <button type="button" role="tab" aria-selected={activeTab === "social"} className={activeTab === "social" ? "active" : ""} onClick={() => setActiveTab("social")}>Social Links</button> : null}
     </div>
     {activeTab === "profile" ? <section className="profile-details" aria-label="Profile details">
       <p><span>Name</span><strong>{profile?.name || "Loading..."}</strong></p>
       <p><span>Email</span><strong>{profile?.email || "Loading..."}</strong></p>
       <p><span>Mobile number</span><strong>{profile?.mobile || "Loading..."}</strong></p>
-    </section> : activeTab === "security" ? <section><p className="profile-tab-copy">Set a new password for your Firebase account.</p><PasswordChangeForm loginPath={admin ? "/admin/login" : "/login"} /></section> : <section className="profile-details" aria-label="Notification settings">
+    </section> : activeTab === "security" ? <section><p className="profile-tab-copy">Set a new password for your Firebase account.</p><PasswordChangeForm loginPath={admin ? "/admin/login" : "/login"} /></section> : activeTab === "notifications" ? <section className="profile-details" aria-label="Notification settings">
       <p><span>Event reminders</span><strong>{notificationsEnabled ? "On" : "Off"}</strong></p>
       <p className="profile-tab-copy">Get browser reminders when your registered event is about to begin.</p>
       {notificationError ? <p role="alert" className="profile-tab-copy" style={{ color: "#b42318" }}>{notificationError}</p> : null}
       <button type="button" role="switch" aria-checked={notificationsEnabled} onClick={toggleNotifications} disabled={notificationBusy} className="dashboard-logout" style={{ marginTop: 12 }}>
         {notificationBusy ? "Saving..." : notificationsEnabled ? "Turn notifications off" : "Turn notifications on"}
       </button>
-    </section>}
+    </section> : admin && activeTab === "policies" ? <PolicyEditor /> : admin && activeTab === "social" ? <SocialLinksEditor /> : null}
   </section></main>;
 }
