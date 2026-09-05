@@ -1,7 +1,7 @@
 import { getMessaging, getToken, isSupported, onMessage } from "firebase/messaging";
 import { browserAuth } from "@/lib/firebase/client-auth";
 import { firebaseApp } from "@/lib/firebase/client";
-import { savePushToken } from "@/features/users/user.repository";
+import { savePushToken, setPushNotificationsEnabled } from "@/features/users/user.repository";
 
 let foregroundListenerStarted = false;
 
@@ -31,4 +31,9 @@ export async function enablePushNotifications(user) {
   if (!token) throw new Error("Push notifications could not be enabled.");
   await savePushToken(user.uid, token);
   return token;
+}
+
+export async function disablePushNotifications(user) {
+  if (!user) throw new Error("You must be signed in to change notification settings.");
+  await setPushNotificationsEnabled(user.uid, false);
 }

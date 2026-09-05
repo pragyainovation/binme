@@ -17,6 +17,11 @@ export async function savePushToken(userId, token) {
   await setDoc(doc(browserDb, "users", userId, "fcmTokens", token), {
     token, platform: "web", enabled: true, updatedAt: serverTimestamp(),
   }, { merge: true });
+  await setPushNotificationsEnabled(userId, true);
+}
+
+export async function setPushNotificationsEnabled(userId, enabled) {
+  await setDoc(doc(browserDb, "users", userId), { pushNotificationsEnabled: enabled, updatedAt: serverTimestamp() }, { merge: true });
 }
 
 export async function getAllUsers() {

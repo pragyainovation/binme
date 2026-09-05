@@ -1,6 +1,6 @@
-# Recommended Architecture Blueprint
+# Feature-based + Layered Architecture
 
-This document defines the target architecture for future implementation. It is not a record of the current codebase.
+This document describes the active architecture. Route modules are intentionally thin: they select a feature screen or adapt HTTP requests; feature modules own domain UI and workflows; `lib` owns technical infrastructure.
 
 ## Principles
 
@@ -86,6 +86,8 @@ Define tokens in `src/app/globals.css`; components and route screens consume the
     │       ├── PushNotificationGate.js
     │       └── AppShell.js
     ├── features/
+    │   ├── dashboard/
+    │   │   └── components/              # User/admin dashboard shells and screens
     │   ├── auth/
     │   │   ├── auth.service.js
     │   │   ├── auth.repository.js

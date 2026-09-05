@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { browserAuth as auth } from "@/lib/firebase/client-auth";
-import { logout } from "@/features/auth/auth.service";
 import { enablePushNotifications } from "@/features/notifications/notification.client";
 
 export default function PushNotificationGate({ children }) {
@@ -27,19 +26,6 @@ export default function PushNotificationGate({ children }) {
           setError(setupError.message || "Unable to configure push notifications.");
           setPermission("error");
         }
-      } else if (currentPermission === "default") {
-        try {
-          const nextPermission = await Notification.requestPermission();
-          setPermission(nextPermission);
-          if (nextPermission === "granted") {
-            await enablePushNotifications(currentUser);
-          } else {
-            setError("Notifications are required to access the dashboard. Allow them in your browser settings, then try again.");
-          }
-        } catch (setupError) {
-          setPermission("error");
-          setError(setupError.message || "Unable to request notification permission.");
-        }
       }
       setChecking(false);
     });
@@ -52,10 +38,24 @@ export default function PushNotificationGate({ children }) {
     setError("");
 
     try {
+      if (!("Notification" in window)) {
+        setPermission("error");
+        setError("This browser does not support notifications.");
+        return;
+      }
+      if (Notification.permission === "denied") {
+        setPermission("denied");
+        setError("Notifications are blocked for this site. Enable them from the browser address-bar/site settings, then reload this page.");
+        return;
+      }
       const nextPermission = await Notification.requestPermission();
       setPermission(nextPermission);
-      if (nextPermission !== "granted") {
-        setError("Notifications are required to access the dashboard. Allow them in your browser settings, then reload this page.");
+      if (nextPermission === "default") {
+        setError("Notification permission was dismissed. Click Enable notifications again and choose Allow in the browser popup.");
+        return;
+      }
+      if (nextPermission === "denied") {
+        setError("Notifications were blocked. Enable them from the browser address-bar/site settings, then reload this page.");
         return;
       }
       await enablePushNotifications(user);
@@ -67,42 +67,29 @@ export default function PushNotificationGate({ children }) {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    window.location.assign("/");
-  };
-
-  if (checking) return <div style={styles.center}>Checking notification access...</div>;
-  if (permission === "granted") return children;
+  if (checking || permission === "granted" || permission === "denied" || permission === "error") return children;
 
   return (
-    <main style={styles.page}>
-      <section style={styles.card}>
-        <div style={styles.icon} aria-hidden="true">!</div>
-        <p style={styles.eyebrow}>One required permission</p>
-          <h1 style={styles.title}>Turn on notifications</h1>
-        <p style={styles.copy}>
-          BinMe uses browser notifications for updates about webinars and sessions you register for. Enable notifications to continue to your dashboard.
-        </p>
-        {error ? <p role="alert" style={styles.error}>{error}</p> : null}
+    <>
+      {children}
+      <aside style={styles.banner} role="status">
+        <div>
+          <strong style={styles.bannerTitle}>Stay updated about your events</strong>
+          <span style={styles.bannerCopy}>Allow notifications to receive reminders for registered sessions.</span>
+          {error ? <span role="alert" style={styles.error}>{error}</span> : null}
+        </div>
         <button type="button" onClick={handleEnable} disabled={enabling} style={styles.button}>
           {enabling ? "Enabling..." : "Enable notifications"}
         </button>
-        <button type="button" onClick={handleLogout} style={styles.logout}>Log out</button>
-      </section>
-    </main>
+      </aside>
+    </>
   );
 }
 
 const styles = {
-  page: { minHeight: "100vh", display: "grid", placeItems: "center", background: "linear-gradient(135deg, #f7f0e7, #eef8ff)", padding: 24 },
-  card: { width: "100%", maxWidth: 520, background: "#fff", borderRadius: 20, padding: 32, boxShadow: "0 18px 45px rgba(22, 34, 31, 0.1)" },
-  icon: { width: 42, height: 42, display: "grid", placeItems: "center", borderRadius: "50%", background: "#d9f95d", color: "#16211f", fontWeight: 900, fontSize: 24 },
-  eyebrow: { margin: "20px 0 8px", color: "#ff764d", fontWeight: 800, textTransform: "uppercase", letterSpacing: 1.2 },
-  title: { margin: 0, color: "#17211f", fontSize: 34 },
-  copy: { color: "#53615f", lineHeight: 1.6, margin: "14px 0 22px" },
-  error: { color: "#b42318", fontWeight: 600, lineHeight: 1.5 },
-  button: { width: "100%", border: 0, borderRadius: 10, padding: "14px 18px", background: "#16211f", color: "#fff", fontWeight: 800, cursor: "pointer" },
-  logout: { display: "block", margin: "16px auto 0", border: 0, background: "transparent", color: "#53615f", cursor: "pointer" },
-  center: { padding: 32, textAlign: "center" },
+  banner: { position: "fixed", right: 20, bottom: 20, zIndex: 50, display: "flex", alignItems: "center", gap: 16, maxWidth: 540, padding: 16, borderRadius: 14, background: "#fff", boxShadow: "0 12px 35px rgba(22, 34, 31, 0.18)", border: "1px solid #dce5df" },
+  bannerTitle: { display: "block", color: "#17211f", marginBottom: 4 },
+  bannerCopy: { display: "block", color: "#53615f", lineHeight: 1.45 },
+  error: { display: "block", color: "#b42318", fontWeight: 600, lineHeight: 1.45, marginTop: 8 },
+  button: { flexShrink: 0, border: 0, borderRadius: 10, padding: "12px 16px", background: "#16211f", color: "#fff", fontWeight: 800, cursor: "pointer" },
 };
