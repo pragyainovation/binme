@@ -5,7 +5,7 @@ import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
 import DataTable from "@/components/ui/DataTable";
 import { browserAuth as auth } from "@/lib/firebase/client-auth";
-import { getPaymentsByUser, getSessionById } from "@/features";
+import { getCourseById, getPaymentsByUser, getSessionById } from "@/features";
 
 function formatRupees(paise) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(Number(paise || 0) / 100);
@@ -32,13 +32,13 @@ export default function UserPaymentsPage() {
   const [loading, setLoading] = useState(true);
 
   const columns = [
-    { header: "Session", accessorKey: "sessionTitle", cell: ({ row }) => row.original.sessionTitle || "Session" },
+    { header: "Purchase", accessorKey: "sessionTitle", cell: ({ row }) => row.original.sessionTitle || "Purchase" },
     { header: "Amount", accessorKey: "amount", cell: ({ row }) => formatRupees(row.original.amount) },
     { header: "Payment status", accessorKey: "status", cell: ({ row }) => <span style={statusStyle(row.original.status)}>{statusLabel(row.original.status)}</span> },
     { header: "Method", accessorKey: "method", cell: ({ row }) => row.original.method ? row.original.method.toUpperCase() : "-" },
     { header: "Date", id: "date", accessorFn: (item) => item.capturedAt?.seconds || item.createdAt?.seconds || 0, cell: ({ row }) => formatTimestamp(row.original.capturedAt || row.original.createdAt) },
     { header: "Refund", accessorKey: "refundStatus", cell: ({ row }) => row.original.refundStatus ? <span style={styles.refund}>{row.original.refundStatus}</span> : "-" },
-    { header: "Details", id: "details", cell: ({ row }) => <Link href={`/dashboard/events/${row.original.sessionSlug || row.original.eventId}`} style={styles.detailsLink}>View session</Link> },
+    { header: "Details", id: "details", cell: ({ row }) => <Link href={row.original.courseId ? `/dashboard/courses/${row.original.courseId}` : `/dashboard/events/${row.original.sessionSlug || row.original.eventId}`} style={styles.detailsLink}>{row.original.courseId ? "View course" : "View session"}</Link> },
   ];
 
   useEffect(() => {
@@ -47,8 +47,8 @@ export default function UserPaymentsPage() {
       try {
         const records = await getPaymentsByUser(user.uid);
         const withSessions = await Promise.all(records.map(async (payment) => {
-          const session = payment.eventId ? await getSessionById(payment.eventId) : null;
-          return { ...payment, sessionTitle: session?.title || "Session", sessionSlug: session?.slug || payment.eventId };
+          const item = payment.courseId ? await getCourseById(payment.courseId) : (payment.eventId ? await getSessionById(payment.eventId) : null);
+          return { ...payment, sessionTitle: item?.title || (payment.courseId ? "Course" : "Session"), sessionSlug: item?.slug || payment.eventId };
         }));
         setPayments(withSessions);
       } finally {

@@ -15,6 +15,8 @@ export default function AdminDashboardLayout({ children }) {
     { href: "/admin/dashboard", label: "Overview" },
     { href: "/admin/dashboard/events", label: "Events" },
     { href: "/admin/dashboard/events/create", label: "Create Event" },
+    { href: "/admin/dashboard/courses", label: "Courses" },
+    { href: "/admin/dashboard/courses/create", label: "Create Course" },
     { href: "/admin/dashboard/payments", label: "Payments" },
     { href: "/admin/dashboard/complaints", label: "Complaints" },
     { href: "/admin/dashboard/profile", label: "Profile & Security" },
@@ -22,7 +24,7 @@ export default function AdminDashboardLayout({ children }) {
 
   const handleLogout = async () => {
     await logout();
-    router.replace("/admin/login");
+    router.replace("/");
   };
 
   return (

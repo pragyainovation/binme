@@ -1,6 +1,6 @@
 import "server-only";
 import crypto from "node:crypto";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminServices } from "@/lib/firebase/admin";
 
 function failure(message, status) { const error = new Error(message); error.status = status; return error; }
@@ -29,7 +29,7 @@ async function razorpayRequest(path, options = {}) {
 async function markPaymentCaptured(orderId, paymentDetails) {
   const { adminDb: db } = getAdminServices();
   const paymentRef = db.collection("payments").doc(orderId);
-  const registrationRefFor = (payment) => db.collection("eventRegistrations").doc(`${payment.userId}_${payment.eventId}`);
+  const registrationRefFor = (payment) => db.collection(payment.resourceType === "course" ? "courseEnrollments" : "eventRegistrations").doc(`${payment.userId}_${payment.courseId || payment.eventId}`);
 
   await db.runTransaction(async (transaction) => {
     const paymentSnap = await transaction.get(paymentRef);
@@ -47,6 +47,14 @@ async function markPaymentCaptured(orderId, paymentDetails) {
     }, { merge: true });
 
     if (!registrationSnap.exists) {
+      if (payment.resourceType === "course") {
+        const courseSnap = await transaction.get(db.collection("courses").doc(payment.courseId));
+        const validityDays = Number(courseSnap.data()?.validityDays);
+        if (!Number.isInteger(validityDays) || validityDays < 1) throw failure("This paid course has no valid access period.", 409);
+        transaction.set(registrationRef, { userId: payment.userId, courseId: payment.courseId, accessType: "paid", status: "enrolled", paymentStatus: "captured", paymentId: paymentDetails.id, paymentOrderId: orderId, enrolledAt: FieldValue.serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + validityDays * 24 * 60 * 60 * 1000), updatedAt: FieldValue.serverTimestamp() });
+        transaction.update(db.collection("courses").doc(payment.courseId), { enrollmentCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() });
+        return;
+      }
       transaction.set(registrationRef, {
         userId: payment.userId,
         eventId: payment.eventId,
@@ -92,6 +100,30 @@ export async function createRazorpayOrder(userId, sessionId) {
     updatedAt: FieldValue.serverTimestamp(),
   });
   return { orderId: order.id, amount: order.amount, currency: order.currency, keyId };
+}
+
+export async function createCourseRazorpayOrder(userId, courseId) {
+  const { adminDb: db } = getAdminServices();
+  const courseSnap = await db.collection("courses").doc(courseId).get();
+  if (!courseSnap.exists) throw failure("Course not found.", 404);
+  const course = courseSnap.data();
+  if (course.status !== "published" || course.accessType !== "paid" || Number(course.price) <= 0) throw failure("This course does not require payment.", 400);
+  if (!Number.isInteger(Number(course.validityDays)) || Number(course.validityDays) < 1) throw failure("This paid course does not have a valid access period.", 409);
+  const { keyId } = razorpayConfig();
+  const order = await razorpayRequest("/orders", { method: "POST", body: JSON.stringify({ amount: Math.round(Number(course.price) * 100), currency: "INR", receipt: `course_${courseId}_${Date.now()}`.slice(0, 40), notes: { courseId, userId, resourceType: "course" } }) });
+  await db.collection("payments").doc(order.id).set({ orderId: order.id, userId, courseId, resourceType: "course", amount: order.amount, currency: order.currency, status: "created", createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+  return { orderId: order.id, amount: order.amount, currency: order.currency, keyId };
+}
+
+export async function expireCourseEnrollment(userId, courseId) {
+  const { adminDb: db } = getAdminServices();
+  const ref = db.collection("courseEnrollments").doc(`${userId}_${courseId}`);
+  const enrollment = await ref.get();
+  if (!enrollment.exists || enrollment.data().userId !== userId) throw failure("Course enrollment not found.", 404);
+  const data = enrollment.data();
+  if (data.accessType !== "paid" || data.status !== "enrolled" || !data.expiresAt || data.expiresAt.toMillis() > Date.now()) return { expired: false };
+  await ref.set({ status: "expired", expiredAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  return { expired: true };
 }
 
 export async function verifyRazorpayPayment(userId, { razorpay_order_id: orderId, razorpay_payment_id: paymentId, razorpay_signature: signature }) {
