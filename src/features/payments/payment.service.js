@@ -64,11 +64,6 @@ async function markPaymentCaptured(orderId, paymentDetails) {
         paymentOrderId: orderId,
         registeredAt: FieldValue.serverTimestamp(),
       });
-      transaction.update(db.collection("events").doc(payment.eventId), {
-        registrationCount: FieldValue.increment(1),
-        registeredUsers: FieldValue.arrayUnion(payment.userId),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
     }
   });
 }

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import ProtectedRoute from "@/components/shared/ProtectedRoute";
-import PushNotificationGate from "@/components/shared/PushNotificationGate";
 import { logout } from "@/features/auth/auth.service";
 
 export default function DashboardLayout({ children }) {
@@ -29,8 +28,7 @@ export default function DashboardLayout({ children }) {
 
   return (
     <ProtectedRoute requiredRole="user" redirectTo="/">
-      <PushNotificationGate>
-        <div className="dashboard-shell">
+      <div className="dashboard-shell">
           <aside className={`dashboard-sidebar ${menuOpen ? "open" : ""}`}>
             <div className="dashboard-brand">BinMe</div>
 
@@ -67,8 +65,7 @@ export default function DashboardLayout({ children }) {
             </header>
             {children}
           </div>
-        </div>
-      </PushNotificationGate>
+      </div>
     </ProtectedRoute>
   );
 }

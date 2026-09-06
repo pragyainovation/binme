@@ -35,10 +35,6 @@ service cloud.firestore {
       allow create: if isOwner(userId);
       allow read, update: if isOwner(userId) || isAdmin();
       allow delete: if false;
-
-      match /fcmTokens/{token} {
-        allow read, write: if isOwner(userId) || isAdmin();
-      }
     }
 
     match /events/{eventId} {

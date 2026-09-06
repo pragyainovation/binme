@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDoc, getDocs, increment, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { browserDb } from "@/lib/firebase/client-firestore";
 
 const records = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -21,10 +21,6 @@ export async function registerForEventGuest(eventId, data) {
     eventId, userId: null, name: data.name.trim(), email: data.email.trim(), emailNormalized,
     mobile: data.mobile.trim(), status: "registered", registeredAt: serverTimestamp(),
   });
-  await updateDoc(doc(browserDb, "events", eventId), {
-    registrationCount: increment(1),
-    updatedAt: serverTimestamp(),
-  });
   return { alreadyRegistered: false, id: ref.id };
 }
 export async function claimEventRegistrations(user) {
@@ -46,9 +42,7 @@ export async function getSessionsWithRegistrationData() {
   }
   return sessions.map((session) => {
     const registrations = bySession.get(session.id) || [];
-    const registeredUsers = registrations.map((item) => item.userId).filter(Boolean);
-    // Registrations are the source of truth; the event aggregate is only an optimization.
-    return { ...session, registrations, registeredUsers, registrationCount: registrations.length };
+    return { ...session, registrations, registrationCount: registrations.length };
   });
 }
 export async function registerForFreeWebinar(webinarId, data) {

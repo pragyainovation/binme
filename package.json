@@ -13,6 +13,7 @@
     "firebase-admin": "^13.10.0",
     "is-hotkey": "^0.2.0",
     "next": "15.5.25",
+    "nodemailer": "^7.0.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "slate": "^0.126.2",

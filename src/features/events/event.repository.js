@@ -21,7 +21,7 @@ export async function getSessionById(sessionId) {
   return bySlug.empty ? null : { id: bySlug.docs[0].id, ...bySlug.docs[0].data() };
 }
 export async function createSession(data) {
-  const ref = await addDoc(collection(browserDb, "events"), { ...data, slug: data.slug || crypto.randomUUID(), status: "active", timezone: IST_TIMEZONE, registrationCount: 0, registeredUsers: [], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  const ref = await addDoc(collection(browserDb, "events"), { ...data, slug: data.slug || crypto.randomUUID(), status: "active", timezone: IST_TIMEZONE, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
   return ref.id;
 }
 export async function updateSession(sessionId, data) { await updateDoc(doc(browserDb, "events", sessionId), { ...data, updatedAt: serverTimestamp() }); }

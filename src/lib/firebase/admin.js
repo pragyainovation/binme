@@ -3,7 +3,6 @@ import "server-only";
 import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { getMessaging } from "firebase-admin/messaging";
 import { requiredServerEnv } from "@/lib/config/env.server";
 
 function getAdminApp() {
@@ -19,5 +18,5 @@ function getAdminApp() {
 // Keep credential validation request-time only. Next.js imports route modules during build.
 export function getAdminServices() {
   const app = getAdminApp();
-  return { adminAuth: getAuth(app), adminDb: getFirestore(app), adminMessaging: getMessaging(app) };
+  return { adminAuth: getAuth(app), adminDb: getFirestore(app) };
 }
