@@ -5,6 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { browserAuth as auth } from "@/lib/firebase/client-auth";
 import { getSessionById, isUserRegistered, registerForSession } from "@/features";
 import { formatDateIST, formatTimeIST, isSessionJoinable, parseISTDate } from "@/lib/time/ist";
+import Loader from "@/components/ui/Loader";
 
 export default function SessionDetailPage({ params }) {
   const { slug } = use(params);
@@ -142,7 +143,7 @@ export default function SessionDetailPage({ params }) {
   const showRegisterButton = !sessionCancelled && !sessionEnded && !alreadyRegistered && session?.accessType !== "paid";
   const showPaymentButton = !sessionCancelled && !sessionEnded && !alreadyRegistered && session?.accessType === "paid";
 
-  if (loading) return <div style={{ padding: 40 }}>Loading session...</div>;
+  if (loading) return <div style={{ padding: 40 }}><Loader label="Loading session" /></div>;
   if (!session) return <div style={{ padding: 40 }}>Session not found.</div>;
 
   return (
@@ -178,11 +179,11 @@ export default function SessionDetailPage({ params }) {
 
         {sessionCancelled ? null : showRegisterButton ? (
           <button onClick={handleRegister} disabled={registering} style={styles.button}>
-            {registering ? "Registering..." : "Register Now"}
+            {registering ? <Loader size={18} label="Registering" /> : "Register Now"}
           </button>
         ) : showPaymentButton ? (
           <button onClick={handlePayment} disabled={paying || !user} style={styles.button}>
-            {paying ? "Opening payment..." : `Pay INR ${Number(session.price).toFixed(2)} and Register`}
+            {paying ? <Loader size={18} label="Opening payment" /> : `Pay INR ${Number(session.price).toFixed(2)} and Register`}
           </button>
         ) : (
           <div style={styles.successBox}>

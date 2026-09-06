@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { browserAuth } from "@/lib/firebase/client-auth";
 import { getSocialLinks, saveSocialLinks } from "@/features/settings/site-settings.repository";
+import Loader from "@/components/ui/Loader";
 
 const platforms = [
   ["youtube", "YouTube", "https://youtube.com/@your-channel"],
@@ -40,10 +41,10 @@ export default function SocialLinksEditor() {
 
   return <section>
     <p className="profile-tab-copy">Add complete profile URLs. Leave a field blank to hide that platform from the landing page.</p>
-    {loading ? <p className="profile-tab-copy">Loading social links...</p> : <div className="social-links-form">
+    {loading ? <Loader label="Loading social links" /> : <div className="social-links-form">
       {platforms.map(([id, label, placeholder]) => <label key={id}>{label}<input type="url" value={links[id] || ""} placeholder={placeholder} onChange={(event) => setLinks((current) => ({ ...current, [id]: event.target.value }))} /></label>)}
     </div>}
     {message ? <p className="profile-tab-copy" role="status">{message}</p> : null}
-    <button type="button" className="dashboard-logout" onClick={save} disabled={saving || loading}>{saving ? "Publishing..." : "Save & Publish"}</button>
+    <button type="button" className="dashboard-logout" onClick={save} disabled={saving || loading}>{saving ? <Loader size={18} label="Publishing social links" /> : "Save & Publish"}</button>
   </section>;
 }

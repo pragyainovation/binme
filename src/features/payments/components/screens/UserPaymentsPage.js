@@ -5,6 +5,7 @@ import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
 import DataTable from "@/components/ui/DataTable";
 import { browserAuth as auth } from "@/lib/firebase/client-auth";
+import Loader from "@/components/ui/Loader";
 import { getCourseById, getPaymentsByUser, getSessionById } from "@/features";
 
 function formatRupees(paise) {
@@ -69,7 +70,7 @@ export default function UserPaymentsPage() {
           </div>
           <Link href="/dashboard" style={styles.primaryButton}>Back to Dashboard</Link>
         </header>
-        {loading ? <div style={styles.loadingCard}>Loading payments...</div> : (
+        {loading ? <div style={styles.loadingCard}><Loader label="Loading payments" /></div> : (
           <DataTable columns={columns} data={payments} emptyMessage="You have not made any payments yet." searchPlaceholder="Search payments..." />
         )}
       </div>

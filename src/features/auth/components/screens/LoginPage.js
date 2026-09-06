@@ -6,6 +6,7 @@ import { loginWithEmail, logout } from "@/features/auth/auth.service";
 import { getUserProfile } from "@/features/users/user.repository";
 import { browserAuth as auth } from "@/lib/firebase/client-auth";
 import PasswordInput from "@/components/ui/PasswordInput";
+import Loader from "@/components/ui/Loader";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -73,7 +74,7 @@ export default function LoginPage() {
           {error ? <p style={styles.error}>{error}</p> : null}
 
           <button type="submit" style={styles.button} disabled={loading}>
-            {loading ? "Logging in..." : "Login"}
+            {loading ? <Loader size={18} label="Logging in" /> : "Login"}
           </button>
         </form>
 

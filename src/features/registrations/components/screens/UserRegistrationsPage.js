@@ -5,6 +5,7 @@ import Link from "next/link";
 import { onAuthStateChanged } from "firebase/auth";
 import { browserAuth as auth } from "@/lib/firebase/client-auth";
 import DataTable from "@/components/ui/DataTable";
+import Loader from "@/components/ui/Loader";
 import { formatDateIST, formatTimeIST } from "@/lib/time/ist";
 import {
   claimFreeWebinarRegistrations,
@@ -77,7 +78,7 @@ export default function MyRegistrationsPage() {
         </header>
 
         {loading ? (
-          <div style={styles.loadingCard}>Loading registrations...</div>
+          <div style={styles.loadingCard}><Loader label="Loading registrations" /></div>
         ) : items.length === 0 ? (
           <div style={styles.emptyState}>No registrations yet.</div>
         ) : (

@@ -13,6 +13,7 @@ import {
 } from "@/features";
 import { formatDateIST, formatTimeIST } from "@/lib/time/ist";
 import DataTable from "@/components/ui/DataTable";
+import Loader from "@/components/ui/Loader";
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({ totalUsers: 0, upcomingSessions: 0, totalRegistrations: 0 });
@@ -92,7 +93,7 @@ export default function AdminDashboardPage() {
         </header>
 
         {loading ? (
-          <div style={styles.loadingCard}>Loading stats...</div>
+          <div style={styles.loadingCard}><Loader label="Loading dashboard statistics" /></div>
         ) : (
           <>
             <section style={styles.statGrid}>

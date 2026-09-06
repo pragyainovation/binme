@@ -5,11 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import ProtectedRoute from "@/components/shared/ProtectedRoute";
 import { logout } from "@/features/auth/auth.service";
+import Loader from "@/components/ui/Loader";
 
 export default function AdminDashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const navItems = [
     { href: "/admin/dashboard", label: "Overview" },
@@ -23,8 +25,13 @@ export default function AdminDashboardLayout({ children }) {
   ];
 
   const handleLogout = async () => {
-    await logout();
-    router.replace("/");
+    setLoggingOut(true);
+    try {
+      await logout();
+      router.replace("/");
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   return (
@@ -46,8 +53,8 @@ export default function AdminDashboardLayout({ children }) {
             ))}
           </nav>
 
-          <button type="button" className="admin-dashboard-logout" onClick={handleLogout}>
-            Logout
+          <button type="button" className="admin-dashboard-logout" onClick={handleLogout} disabled={loggingOut}>
+            {loggingOut ? <Loader size={18} label="Logging out" /> : "Logout"}
           </button>
         </aside>
 

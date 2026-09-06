@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import DataTable from "@/components/ui/DataTable";
 import { browserAuth as auth } from "@/lib/firebase/client-auth";
+import Loader from "@/components/ui/Loader";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   claimFreeWebinarRegistrations,
@@ -133,7 +134,7 @@ export default function DashboardPage() {
         </header>
 
         {loading ? (
-          <div style={styles.loadingCard}>Loading sessions...</div>
+          <div style={styles.loadingCard}><Loader label="Loading sessions" /></div>
         ) : (
           <>
             <section style={styles.topGrid}>

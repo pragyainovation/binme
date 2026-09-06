@@ -7,6 +7,7 @@ import DataTable from "@/components/ui/DataTable";
 import { getAllPayments, getAllUsers, getSessionById } from "@/features";
 import { markPaymentRefunded } from "@/features/payments/payment.client";
 import { parseISTDate } from "@/lib/time/ist";
+import Loader from "@/components/ui/Loader";
 
 const formatRupees = (paise) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(Number(paise || 0) / 100);
 const formatTimestamp = (timestamp) => timestamp?.seconds
@@ -103,7 +104,7 @@ function AdminPaymentsContent() {
     { header: "Razorpay payment ID", accessorKey: "paymentId", cell: ({ row }) => row.original.paymentId ? <div style={styles.idCell}><code style={styles.paymentId}>{row.original.paymentId}</code><button type="button" onClick={() => copyPaymentId(row.original.paymentId)} style={styles.copyButton}>{copiedPaymentId === row.original.paymentId ? "Copied" : "Copy"}</button></div> : "-" },
     { header: "Date", id: "date", accessorFn: (item) => item.capturedAt?.seconds || item.createdAt?.seconds || 0, cell: ({ row }) => formatTimestamp(row.original.capturedAt || row.original.createdAt) },
     { header: "Refund", accessorKey: "refundStatus", cell: ({ row }) => row.original.refundStatus ? <span style={styles.refund}>{row.original.refundStatus}</span> : "-" },
-    { header: "Action", id: "action", cell: ({ row }) => row.original.sessionStatus === "cancelled" && row.original.status === "captured" ? <button type="button" style={styles.refundButton} disabled={updatingOrderId === row.original.orderId} onClick={() => markRefunded(row.original)}>{updatingOrderId === row.original.orderId ? "Updating..." : "Mark refunded"}</button> : "-" },
+    { header: "Action", id: "action", cell: ({ row }) => row.original.sessionStatus === "cancelled" && row.original.status === "captured" ? <button type="button" style={styles.refundButton} disabled={updatingOrderId === row.original.orderId} onClick={() => markRefunded(row.original)}>{updatingOrderId === row.original.orderId ? <Loader size={18} label="Updating refund" /> : "Mark refunded"}</button> : "-" },
   ];
 
   return (
@@ -117,7 +118,7 @@ function AdminPaymentsContent() {
           </div>
           {eventId ? <Link href="/admin/dashboard/payments" style={styles.primaryButton}>All Payments</Link> : <Link href="/admin/dashboard/events" style={styles.primaryButton}>View Events</Link>}
         </header>
-        {loading ? <div style={styles.loadingCard}>Loading payments...</div> : <>
+        {loading ? <div style={styles.loadingCard}><Loader label="Loading payments" /></div> : <>
           <div style={styles.filters} aria-label="Session payment filters">
             {[{ id: "all", label: "All sessions" }, { id: "cancelled", label: "Cancelled sessions" }, { id: "upcoming", label: "Upcoming sessions" }].map((filter) => <button key={filter.id} type="button" onClick={() => setSessionFilter(filter.id)} style={sessionFilter === filter.id ? styles.filterActive : styles.filterButton}>{filter.label}</button>)}
           </div>
@@ -129,7 +130,7 @@ function AdminPaymentsContent() {
 }
 
 export default function AdminPaymentsPage() {
-  return <Suspense fallback={<main style={styles.page}><div style={styles.container}><div style={styles.loadingCard}>Loading payments...</div></div></main>}><AdminPaymentsContent /></Suspense>;
+  return <Suspense fallback={<main style={styles.page}><div style={styles.container}><div style={styles.loadingCard}><Loader label="Loading payments" /></div></div></main>}><AdminPaymentsContent /></Suspense>;
 }
 
 const styles = {

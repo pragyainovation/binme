@@ -5,6 +5,7 @@ import { browserAuth } from "@/lib/firebase/client-auth";
 import { getSitePolicy, saveSitePolicy } from "@/features/policies/policy.repository";
 import { toRichTextValue } from "@/features/policies/policy.content";
 import RichTextEditor from "./RichTextEditor";
+import Loader from "@/components/ui/Loader";
 
 const policyItems = [
   { id: "terms", label: "Terms & Conditions" },
@@ -52,11 +53,11 @@ export default function PolicyEditor() {
     <div className="profile-tabs" role="tablist" aria-label="Policy editor">
       {policyItems.map((policy) => <button key={policy.id} type="button" role="tab" aria-selected={activePolicy === policy.id} className={activePolicy === policy.id ? "active" : ""} onClick={() => { setActivePolicy(policy.id); setMessage(""); }}>{policy.label}</button>)}
     </div>
-    {loading ? <p className="profile-tab-copy">Loading policy...</p> : <>
+    {loading ? <Loader label="Loading policy" /> : <>
       <label className="policy-editor-label">{policyItems.find((policy) => policy.id === activePolicy)?.label}</label>
       <RichTextEditor key={activePolicy} value={contents[activePolicy]} onChange={(value) => setContents((current) => ({ ...current, [activePolicy]: value }))} />
       {message ? <p className="profile-tab-copy" role="status">{message}</p> : null}
-      <button type="button" className="dashboard-logout" onClick={save} disabled={saving}>{saving ? "Publishing..." : "Save & Publish"}</button>
+      <button type="button" className="dashboard-logout" onClick={save} disabled={saving}>{saving ? <Loader size={18} label="Publishing policy" /> : "Save & Publish"}</button>
     </>}
   </section>;
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSession } from "@/features";
 import { IST_TIMEZONE, parseTimeInput } from "@/lib/time/ist";
+import Loader from "@/components/ui/Loader";
 
 export default function CreateSessionPage() {
   const router = useRouter();
@@ -71,7 +72,7 @@ export default function CreateSessionPage() {
 
           {error ? <p style={styles.error}>{error}</p> : null}
 
-          <button type="submit" style={styles.button} disabled={loading}>{loading ? "Creating..." : "Create Session"}</button>
+          <button type="submit" style={styles.button} disabled={loading}>{loading ? <Loader size={18} label="Creating session" /> : "Create Session"}</button>
         </form>
       </div>
     </main>

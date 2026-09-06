@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { signUpWithEmail } from "@/features/auth/auth.service";
 import PasswordInput from "@/components/ui/PasswordInput";
 import { registerForSession } from "@/features/registrations/registration.repository";
+import Loader from "@/components/ui/Loader";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -87,7 +88,7 @@ export default function SignupPage() {
           {error ? <p style={styles.error}>{error}</p> : null}
 
           <button type="submit" style={styles.button} disabled={loading}>
-            {loading ? "Creating account..." : "Sign up"}
+            {loading ? <Loader size={18} label="Creating account" /> : "Sign up"}
           </button>
         </form>
 

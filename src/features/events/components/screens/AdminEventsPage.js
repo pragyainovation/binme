@@ -13,6 +13,7 @@ import {
 } from "@/features";
 import { formatDateIST, formatTimeIST } from "@/lib/time/ist";
 import { sendEventReminderEmail } from "@/features/reminders/reminder.client";
+import Loader from "@/components/ui/Loader";
 
 export default function AdminSessionsPage() {
   const [sessions, setSessions] = useState([]);
@@ -97,7 +98,7 @@ export default function AdminSessionsPage() {
         return <div>
           <Link href={`/admin/dashboard/events/${session.id}`} style={styles.viewLink} aria-label="View" title="View">&#128065;</Link>
           <Link href={`/admin/dashboard/events/${session.id}/edit`} style={styles.editLink} aria-label="Edit" title="Edit">&#9998;</Link>
-          <button type="button" style={styles.notificationButton} disabled={reminderId === session.id} onClick={() => sendReminder(session)} aria-label="Send email reminder" title="Send email reminder">&#9993;</button>
+          <button type="button" style={styles.notificationButton} disabled={reminderId === session.id} onClick={() => sendReminder(session)} aria-label="Send email reminder" title="Send email reminder">{reminderId === session.id ? <Loader size={18} label="Sending email reminder" /> : "✉"}</button>
           <button type="button" style={styles.actionButton} disabled={actionId === session.id} onClick={() => deactivate(session)} aria-label="Deactivate" title="Deactivate">&#9209;</button>
           <button type="button" style={styles.deleteButton} disabled={actionId === session.id} onClick={() => remove(session)} aria-label="Delete" title="Delete">&#128465;</button>
         </div>;
@@ -113,7 +114,7 @@ export default function AdminSessionsPage() {
           <Link href="/admin/dashboard/events/create" style={styles.primaryButton}>Create Event</Link>
         </header>
 
-        {loading ? <p>Loading sessions...</p> : (
+        {loading ? <Loader label="Loading sessions" /> : (
           <DataTable columns={columns} data={sessions} emptyMessage="No sessions available." />
         )}
       </div>
