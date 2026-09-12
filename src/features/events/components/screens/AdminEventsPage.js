@@ -11,7 +11,7 @@ import {
   getSessionsWithRegistrationData,
   updateFreeWebinar,
 } from "@/features";
-import { formatDateIST, formatTimeIST } from "@/lib/time/ist";
+import { formatDateIST, formatTimeIST, parseISTDate } from "@/lib/time/ist";
 import { sendEventReminderEmail } from "@/features/reminders/reminder.client";
 import Loader from "@/components/ui/Loader";
 
@@ -20,6 +20,9 @@ export default function AdminSessionsPage() {
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState(null);
   const [reminderId, setReminderId] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(timer); }, []);
 
   const loadSessions = async () => {
     const items = await getSessionsWithRegistrationData();
@@ -93,7 +96,12 @@ export default function AdminSessionsPage() {
     {
       header: "Status",
       accessorKey: "status",
-      cell: ({ row }) => row.original.status === "inactive" ? "Inactive" : "Active",
+      cell: ({ row }) => {
+        const session = row.original;
+        const start = parseISTDate(session.date, session.time);
+        const ended = start && now > start.getTime() + Number(session.duration || 0) * 60000;
+        return session.status === "inactive" ? "Inactive" : ended ? "Session Ended" : "Active";
+      },
     },
     {
       header: "Actions",

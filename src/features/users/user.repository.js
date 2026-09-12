@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, setDoc } from "firebase/firestore";
 import { browserDb } from "@/lib/firebase/client-firestore";
 
 export async function createUserProfile(user, extra = {}) {
@@ -14,6 +14,6 @@ export async function getUserProfile(userId) {
 }
 
 export async function getAllUsers() {
-  const snapshot = await getDocs(collection(browserDb, "users"));
+  const snapshot = await getDocs(query(collection(browserDb, "users"), orderBy("createdAt", "desc"), limit(50)));
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
 }

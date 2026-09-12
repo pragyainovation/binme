@@ -11,7 +11,7 @@ import {
   getSessionsWithRegistrationData,
   updateFreeWebinar,
 } from "@/features";
-import { formatDateIST, formatTimeIST } from "@/lib/time/ist";
+import { formatDateIST, formatTimeIST, parseISTDate } from "@/lib/time/ist";
 import DataTable from "@/components/ui/DataTable";
 import Loader from "@/components/ui/Loader";
 
@@ -20,6 +20,9 @@ export default function AdminDashboardPage() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(timer); }, []);
 
   const loadDashboard = async () => {
     const users = await getAllUsers();
@@ -66,7 +69,7 @@ export default function AdminDashboardPage() {
     { header: "Session", accessorKey: "title" },
     { header: "Date", accessorKey: "date", cell: ({ row }) => formatDateIST(row.original.date) },
     { header: "Time", accessorKey: "time", cell: ({ row }) => `${formatTimeIST(row.original.time)} IST` },
-    { header: "Status", accessorKey: "status", cell: ({ row }) => row.original.status === "inactive" ? "Inactive" : "Active" },
+    { header: "Status", accessorKey: "status", cell: ({ row }) => { const session = row.original; const start = parseISTDate(session.date, session.time); const ended = start && now > start.getTime() + Number(session.duration || 0) * 60000; return session.status === "inactive" ? "Inactive" : ended ? "Session Ended" : "Active"; } },
     { header: "Registered", accessorKey: "registrationCount", cell: ({ row }) => row.original.registrationCount || 0 },
     {
       header: "Actions",

@@ -1,11 +1,10 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, limit, orderBy, query, serverTimestamp, updateDoc } from "firebase/firestore";
 import { browserDb } from "@/lib/firebase/client-firestore";
 
 const records = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
 
 export async function getCoupons() {
-  const coupons = records(await getDocs(collection(browserDb, "coupons")));
-  return coupons.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  return records(await getDocs(query(collection(browserDb, "coupons"), orderBy("createdAt", "desc"), limit(50))));
 }
 
 export async function createCoupon(data) {

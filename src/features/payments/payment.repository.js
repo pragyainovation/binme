@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 import { browserDb } from "@/lib/firebase/client-firestore";
 
 const records = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -13,8 +13,8 @@ export async function getPaymentsByUser(userId) {
   });
 }
 
-export async function getAllPayments() {
-  const snapshot = await getDocs(collection(browserDb, "payments"));
+export async function getAllPayments(pageSize = 50) {
+  const snapshot = await getDocs(query(collection(browserDb, "payments"), orderBy("createdAt", "desc"), limit(pageSize)));
   return records(snapshot).sort((a, b) => {
     const aTime = a.createdAt?.seconds || a.capturedAt?.seconds || 0;
     const bTime = b.createdAt?.seconds || b.capturedAt?.seconds || 0;
