@@ -39,7 +39,9 @@ service cloud.firestore {
 
     match /events/{eventId} {
       // A registered learner must retain access to a cancelled session's details and refund notice.
-      allow read: if resource.data.status == "active" || isAdmin() || isRegisteredForEvent(eventId);
+      allow read: if isAdmin()
+        || (resource.data.courseId == null && (resource.data.status == "active" || isRegisteredForEvent(eventId)))
+        || (resource.data.courseId != null && hasActiveCourseAccess(resource.data.courseId));
       allow create, update, delete: if isAdmin();
     }
 

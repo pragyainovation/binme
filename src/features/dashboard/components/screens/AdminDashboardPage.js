@@ -66,6 +66,7 @@ export default function AdminDashboardPage() {
     { header: "Session", accessorKey: "title" },
     { header: "Date", accessorKey: "date", cell: ({ row }) => formatDateIST(row.original.date) },
     { header: "Time", accessorKey: "time", cell: ({ row }) => `${formatTimeIST(row.original.time)} IST` },
+    { header: "Status", accessorKey: "status", cell: ({ row }) => row.original.status === "inactive" ? "Inactive" : "Active" },
     { header: "Registered", accessorKey: "registrationCount", cell: ({ row }) => row.original.registrationCount || 0 },
     {
       header: "Actions",

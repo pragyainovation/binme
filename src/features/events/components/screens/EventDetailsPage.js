@@ -132,16 +132,18 @@ export default function SessionDetailPage({ params }) {
   }, [session, now]);
   const sessionEnded = sessionTiming?.ended ?? false;
   const sessionCancelled = session?.status === "cancelled";
+  const sessionInactive = session?.status === "inactive";
+  const sessionUnavailable = sessionCancelled || sessionInactive;
 
   const showJoinButton = Boolean(
     isSessionJoinable(session) &&
-    session?.status !== "cancelled" &&
+    !sessionUnavailable &&
     session?.meetLink &&
-    alreadyRegistered
+    (alreadyRegistered || session?.courseId)
   );
 
-  const showRegisterButton = !sessionCancelled && !sessionEnded && !alreadyRegistered && session?.accessType !== "paid";
-  const showPaymentButton = !sessionCancelled && !sessionEnded && !alreadyRegistered && session?.accessType === "paid";
+  const showRegisterButton = !sessionUnavailable && !sessionEnded && !alreadyRegistered && !session?.courseId && session?.accessType !== "paid";
+  const showPaymentButton = !sessionUnavailable && !sessionEnded && !alreadyRegistered && !session?.courseId && session?.accessType === "paid";
 
   if (loading) return <div style={{ padding: 40 }}><Loader label="Loading session" /></div>;
   if (!session) return <div style={{ padding: 40 }}>Session not found.</div>;
@@ -161,9 +163,9 @@ export default function SessionDetailPage({ params }) {
 
         <p style={styles.description}>{session.description}</p>
 
-        {sessionCancelled ? (
+        {sessionUnavailable ? (
           <div style={styles.cancelledBox} role="status">
-            <strong>This session has been cancelled.</strong>
+            <strong>This session has been {sessionInactive ? "deactivated" : "cancelled"}.</strong>
             {alreadyRegistered && session.accessType === "paid" ? (
               <p>Your refund will be credited within 10–15 days after it is processed.</p>
             ) : <p>This session is no longer available for registration.</p>}
@@ -177,7 +179,7 @@ export default function SessionDetailPage({ params }) {
           </div>
         ) : null}
 
-        {sessionCancelled ? null : showRegisterButton ? (
+        {sessionUnavailable ? null : showRegisterButton ? (
           <button onClick={handleRegister} disabled={registering} style={styles.button}>
             {registering ? <Loader size={18} label="Registering" /> : "Register Now"}
           </button>
@@ -187,7 +189,7 @@ export default function SessionDetailPage({ params }) {
           </button>
         ) : (
           <div style={styles.successBox}>
-            <strong>✓ You are registered</strong>
+            <strong>✓ {session.courseId ? "Your course access is confirmed" : "You are registered"}</strong>
             <p>Date: {formatDateIST(session.date)}</p>
             <p>Time: {formatTimeIST(session.time)} IST</p>
             {showJoinButton && session.meetLink ? (

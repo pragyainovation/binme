@@ -27,7 +27,7 @@ export default function AdminSessionDetailPage({ params }) {
   }, []);
 
   const sessionRunning = (() => {
-    if (session?.status === "cancelled") return false;
+    if (session?.status === "cancelled" || session?.status === "inactive") return false;
     if (!session?.date || !session?.time || !session?.duration) return false;
     const startDate = parseISTDate(session.date, session.time);
     if (!startDate) return false;

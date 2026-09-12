@@ -10,8 +10,11 @@ import {
   claimFreeWebinarRegistrations,
   getFreeWebinar,
   getFreeWebinarById,
+  getEnrollmentsByUser,
+  getOpenSessions,
   getRegistrationsByUser,
-  getSessions,
+  getSessionById,
+  getSessionsForCourse,
 } from "@/features";
 import { formatDateIST, formatTimeIST, isSessionJoinable, parseISTDate } from "@/lib/time/ist";
 
@@ -37,13 +40,24 @@ export default function DashboardPage() {
       if (!currentUser) return;
 
       setUser(currentUser);
-      const sessionList = await getSessions();
-      const registrationList = await getRegistrationsByUser(currentUser.uid);
+      const [openSessions, enrollmentList, registrationList] = await Promise.all([
+        getOpenSessions(),
+        getEnrollmentsByUser(currentUser.uid),
+        getRegistrationsByUser(currentUser.uid),
+      ]);
+      const activeCourseIds = enrollmentList
+        .filter((enrollment) => enrollment.status === "enrolled" && (enrollment.accessType === "free" || enrollment.expiresAt?.seconds * 1000 > Date.now()))
+        .map((enrollment) => enrollment.courseId);
+      const courseSessions = (await Promise.all(activeCourseIds.map(getSessionsForCourse))).flat();
+      const registeredInactiveSessions = (await Promise.all(registrationList.map(async (registration) => {
+        const session = await getSessionById(registration.sessionId);
+        return session?.status === "inactive" ? session : null;
+      }))).filter(Boolean);
       const freeRegistrations = await claimFreeWebinarRegistrations(currentUser);
       const latestFreeRegistration = freeRegistrations[0] || null;
       const freeWebinarData = await getFreeWebinar();
 
-      setSessions(freeWebinarData ? [{ ...freeWebinarData, isFreeWebinar: true }, ...sessionList] : sessionList);
+      setSessions(freeWebinarData ? [{ ...freeWebinarData, isFreeWebinar: true }, ...openSessions, ...courseSessions, ...registeredInactiveSessions] : [...openSessions, ...courseSessions, ...registeredInactiveSessions]);
       setRegistrations(registrationList);
       setFreeWebinarRegistration(latestFreeRegistration);
       setFreeWebinar(latestFreeRegistration ? await getFreeWebinarById(latestFreeRegistration.webinarId) : freeWebinarData);
@@ -64,6 +78,7 @@ export default function DashboardPage() {
         const endMs = startMs !== null ? startMs + durationMinutes * 60000 : null;
         const minutesUntilStart = startMs !== null ? (startMs - now) / 60000 : null;
         const isEnded = endMs !== null ? now > endMs : false;
+        const isInactive = session.status === "inactive";
         const isClosedForRegistration = minutesUntilStart !== null && minutesUntilStart <= 5 && minutesUntilStart >= 0;
 
         return {
@@ -71,11 +86,12 @@ export default function DashboardPage() {
           startDate,
           endMs,
           isEnded,
+          isInactive,
           isClosedForRegistration,
           minutesUntilStart,
           isRegistered: session.isFreeWebinar
             ? Boolean(freeWebinarRegistration)
-            : registeredSessionIds.has(session.id),
+            : Boolean(session.courseId) || registeredSessionIds.has(session.id),
         };
       })
       .sort((a, b) => (a.startDate?.getTime?.() ?? 0) - (b.startDate?.getTime?.() ?? 0));
@@ -85,8 +101,8 @@ export default function DashboardPage() {
     const registeredSessions = normalizedSessions.filter((session) => session.isRegistered);
 
     return {
-      Upcoming: normalizedSessions.filter((session) => !session.isEnded && !session.isClosedForRegistration && !session.isRegistered),
-      Completed: normalizedSessions.filter((session) => session.isEnded),
+      Upcoming: normalizedSessions.filter((session) => !session.isInactive && !session.isEnded && !session.isClosedForRegistration && !session.isRegistered),
+      Completed: normalizedSessions.filter((session) => session.isEnded || session.isInactive),
       Closed: normalizedSessions.filter((session) => session.isClosedForRegistration && !session.isEnded),
       Registered: registeredSessions,
     };
@@ -101,11 +117,11 @@ export default function DashboardPage() {
     {
       header: "Status",
       id: "status",
-      accessorFn: (session) => session.isEnded ? "Session Ended" : session.isClosedForRegistration ? "Closed" : session.isRegistered ? "Registered" : "Open",
+      accessorFn: (session) => session.isInactive ? "Inactive" : session.isEnded ? "Session Ended" : session.isClosedForRegistration ? "Closed" : session.isRegistered ? "Registered" : "Open",
       cell: ({ row }) => {
         const session = row.original;
-        const status = session.isEnded ? "Session Ended" : session.isClosedForRegistration ? "Closed" : session.isRegistered ? "Registered" : "Open";
-        return <span style={session.isEnded ? styles.statusEnded : session.isClosedForRegistration ? styles.statusClosed : session.isRegistered ? styles.status : styles.statusMuted}>{status}</span>;
+        const status = session.isInactive ? "Inactive" : session.isEnded ? "Session Ended" : session.isClosedForRegistration ? "Closed" : session.isRegistered ? "Registered" : "Open";
+        return <span style={session.isInactive || session.isEnded ? styles.statusEnded : session.isClosedForRegistration ? styles.statusClosed : session.isRegistered ? styles.status : styles.statusMuted}>{status}</span>;
       },
     },
     {
@@ -113,7 +129,7 @@ export default function DashboardPage() {
       id: "actions",
       cell: ({ row }) => {
         const session = row.original;
-        const canJoin = session.isRegistered && session.meetLink && isSessionJoinable(session, now);
+        const canJoin = !session.isInactive && session.isRegistered && session.meetLink && isSessionJoinable(session, now);
         return canJoin ? (
           <a href={session.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton}>Join Webinar</a>
         ) : (

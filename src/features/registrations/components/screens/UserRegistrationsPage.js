@@ -10,8 +10,10 @@ import { formatDateIST, formatTimeIST } from "@/lib/time/ist";
 import {
   claimFreeWebinarRegistrations,
   getFreeWebinarById,
+  getEnrollmentsByUser,
   getRegistrationsByUser,
   getSessionById,
+  getSessionsForCourse,
 } from "@/features";
 import { isSessionJoinable } from "@/lib/time/ist";
 
@@ -24,13 +26,13 @@ export default function MyRegistrationsPage() {
     { header: "Session", id: "title", accessorFn: (item) => item.freeWebinar?.title || item.session?.title || "Session" },
     { header: "Date", id: "date", accessorFn: (item) => item.freeWebinar?.date || item.session?.date || "-", cell: ({ row }) => formatDateIST(row.original.freeWebinar?.date || row.original.session?.date) },
     { header: "Time", id: "time", accessorFn: (item) => formatTimeIST(item.freeWebinar?.time || item.session?.time) || "-" + 'IST'},
-    { header: "Type", id: "type", accessorFn: (item) => item.freeWebinar ? "Free webinar" : "Session" },
+    { header: "Type", id: "type", accessorFn: (item) => item.freeWebinar ? "Free webinar" : item.courseSession ? "Course live session" : "Session" },
     {
       header: "Actions",
       id: "actions",
       cell: ({ row }) => row.original.freeWebinar ? (
         row.original.freeWebinar.meetLink && isSessionJoinable(row.original.freeWebinar, now) ? <a href={row.original.freeWebinar.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton}>Join Webinar</a> : <Link href="/dashboard/free-webinar" style={styles.linkButton}>View Details</Link>
-      ) : row.original.session?.meetLink && isSessionJoinable(row.original.session, now) ? (
+      ) : row.original.session?.status !== "inactive" && row.original.session?.meetLink && isSessionJoinable(row.original.session, now) ? (
         <a href={row.original.session.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton}>Join Webinar</a>
       ) : <Link href={`/dashboard/events/${row.original.sessionId}`} style={styles.linkButton}>View Details</Link>,
     },
@@ -45,20 +47,25 @@ export default function MyRegistrationsPage() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) return;
 
-      const registrationList = await getRegistrationsByUser(user.uid);
+      const [registrationList, enrollments] = await Promise.all([getRegistrationsByUser(user.uid), getEnrollmentsByUser(user.uid)]);
       const sessionPromises = registrationList.map(async (registration) => {
         const session = await getSessionById(registration.sessionId);
         return session ? { ...registration, session } : null;
       });
 
       const transformed = (await Promise.all(sessionPromises)).filter(Boolean);
+      const activeCourseIds = enrollments
+        .filter((enrollment) => enrollment.status === "enrolled" && (enrollment.accessType === "free" || enrollment.expiresAt?.seconds * 1000 > Date.now()))
+        .map((enrollment) => enrollment.courseId);
+      const courseItems = (await Promise.all(activeCourseIds.map(getSessionsForCourse))).flat()
+        .map((session) => ({ sessionId: session.id, session, courseSession: true }));
 
       const freeRegistrations = await claimFreeWebinarRegistrations(user);
       const freeItems = await Promise.all(freeRegistrations.map(async (registration) => ({
         ...registration,
         freeWebinar: await getFreeWebinarById(registration.webinarId),
       })));
-      setItems([...transformed, ...freeItems]);
+      setItems([...transformed, ...courseItems, ...freeItems]);
       setLoading(false);
     });
 

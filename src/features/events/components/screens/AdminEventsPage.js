@@ -91,6 +91,11 @@ export default function AdminSessionsPage() {
       cell: ({ row }) => row.original.isFreeWebinar ? "Landing-page free webinar" : row.original.registrationCount || 0,
     },
     {
+      header: "Status",
+      accessorKey: "status",
+      cell: ({ row }) => row.original.status === "inactive" ? "Inactive" : "Active",
+    },
+    {
       header: "Actions",
       id: "actions",
       cell: ({ row }) => {
@@ -98,8 +103,10 @@ export default function AdminSessionsPage() {
         return <div>
           <Link href={`/admin/dashboard/events/${session.id}`} style={styles.viewLink} aria-label="View" title="View">&#128065;</Link>
           <Link href={`/admin/dashboard/events/${session.id}/edit`} style={styles.editLink} aria-label="Edit" title="Edit">&#9998;</Link>
-          <button type="button" style={styles.notificationButton} disabled={reminderId === session.id} onClick={() => sendReminder(session)} aria-label="Send email reminder" title="Send email reminder">{reminderId === session.id ? <Loader size={18} label="Sending email reminder" /> : "✉"}</button>
-          <button type="button" style={styles.actionButton} disabled={actionId === session.id} onClick={() => deactivate(session)} aria-label="Deactivate" title="Deactivate">&#9209;</button>
+          {session.status !== "inactive" ? <>
+            <button type="button" style={styles.notificationButton} disabled={reminderId === session.id} onClick={() => sendReminder(session)} aria-label="Send email reminder" title="Send email reminder">{reminderId === session.id ? <Loader size={18} label="Sending email reminder" /> : "✉"}</button>
+            <button type="button" style={styles.actionButton} disabled={actionId === session.id} onClick={() => deactivate(session)} aria-label="Deactivate" title="Deactivate">&#9209;</button>
+          </> : null}
           <button type="button" style={styles.deleteButton} disabled={actionId === session.id} onClick={() => remove(session)} aria-label="Delete" title="Delete">&#128465;</button>
         </div>;
       },

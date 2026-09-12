@@ -47,10 +47,13 @@ export default function Home() {
   }, [router]);
 
   useEffect(() => {
-    getLandingEvents()
+    const loadLandingEvents = () => getLandingEvents()
       .then((events) => { setLandingEvents(events); setWebinar(events[0] || null); })
       .catch(() => { setLandingEvents([]); setWebinar(null); })
       .finally(() => setWebinarLoading(false));
+    loadLandingEvents();
+    const timer = window.setInterval(loadLandingEvents, 30000);
+    return () => window.clearInterval(timer);
   }, []);
 
   useEffect(() => {

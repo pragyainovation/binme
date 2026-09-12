@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSessionById, updateSession } from "@/features";
+import { getAdminCourses, getSessionById, updateSession } from "@/features";
 import { IST_TIMEZONE, parseTimeInput } from "@/lib/time/ist";
 
 export default function EditSessionPage({ params }) {
@@ -20,6 +20,7 @@ export default function EditSessionPage({ params }) {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [courses, setCourses] = useState([]);
 
   useEffect(() => {
     const load = async () => {
@@ -35,12 +36,14 @@ export default function EditSessionPage({ params }) {
           accessType: session.accessType || "free",
           price: session.price ? String(session.price) : "",
           showOnLanding: Boolean(session.showOnLanding),
+          courseId: session.courseId || "",
         });
       }
       setLoading(false);
     };
 
     load();
+    getAdminCourses().then(setCourses);
   }, [params.id]);
 
   const handleChange = (event) => {
@@ -63,6 +66,7 @@ export default function EditSessionPage({ params }) {
       duration: Number(form.duration),
       accessType: form.accessType,
       price: form.accessType === "paid" ? Number(form.price) : 0,
+      courseId: form.courseId || null,
     });
     router.push(`/admin/dashboard/events/${params.id}`);
   };
@@ -80,6 +84,8 @@ export default function EditSessionPage({ params }) {
           <label style={styles.label}>Time (IST)<input name="time" type="time" value={form.time} onChange={handleChange} style={styles.input} required /></label>
           <label style={styles.label}>Duration<input name="duration" type="number" value={form.duration} onChange={handleChange} style={styles.input} required /></label>
           <label style={styles.label}>Google Meet Link<input name="meetLink" value={form.meetLink} onChange={handleChange} style={styles.input} /></label>
+          <label style={styles.label}>Course access<select name="courseId" value={form.courseId || ""} onChange={handleChange} style={styles.input}><option value="">Open to everyone</option>{courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select></label>
+          {form.courseId ? <p style={styles.help}>Only learners with active access to this course can participate in this live session.</p> : null}
           <label style={styles.label}>Access<select name="accessType" value={form.accessType} onChange={handleChange} style={styles.input}><option value="free">Free</option><option value="paid">Paid</option></select></label>
           {form.accessType === "paid" ? <label style={styles.label}>Price (INR)<input name="price" type="number" min="1" step="0.01" value={form.price} onChange={handleChange} style={styles.input} required /></label> : null}
           <label style={styles.checkLabel}><input name="showOnLanding" type="checkbox" checked={form.showOnLanding} onChange={handleChange} /> Show on landing page</label>
@@ -102,4 +108,5 @@ const styles = {
   checkLabel: { display: "flex", alignItems: "center", gap: 10, fontWeight: 700 },
   button: { background: "#1a201e", color: "#fff", border: 0, borderRadius: 10, padding: "14px 18px", fontWeight: 700, cursor: "pointer" },
   error: { color: "#b42318", fontWeight: 600 },
+  help: { margin: "-8px 0 0", color: "#53615f", lineHeight: 1.5 },
 };

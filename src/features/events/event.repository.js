@@ -1,6 +1,6 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { browserDb } from "@/lib/firebase/client-firestore";
-import { IST_TIMEZONE } from "@/lib/time/ist";
+import { IST_TIMEZONE, parseISTDate } from "@/lib/time/ist";
 
 const records = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
 
@@ -8,10 +8,21 @@ export async function getSessions() {
   const sessions = records(await getDocs(collection(browserDb, "events")));
   return sessions.filter((item) => item.status !== "cancelled").sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 }
+export async function getOpenSessions() {
+  const sessions = records(await getDocs(query(collection(browserDb, "events"), where("courseId", "==", null), where("status", "==", "active"))));
+  return sessions.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+}
+export async function getSessionsForCourse(courseId) {
+  const sessions = records(await getDocs(query(collection(browserDb, "events"), where("courseId", "==", courseId))));
+  return sessions.filter((item) => item.status !== "cancelled").sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+}
 export async function getLandingEvents() {
-  const events = records(await getDocs(collection(browserDb, "events")));
+  const events = records(await getDocs(query(collection(browserDb, "events"), where("courseId", "==", null), where("status", "==", "active"))));
   return events
-    .filter((event) => event.status === "active" && event.showOnLanding === true)
+    .filter((event) => {
+      const start = parseISTDate(event.date, event.time);
+      return event.showOnLanding === true && start && Date.now() < start.getTime() + Number(event.duration || 0) * 60000;
+    })
     .sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 }
 export async function getSessionById(sessionId) {
@@ -25,7 +36,7 @@ export async function createSession(data) {
   return ref.id;
 }
 export async function updateSession(sessionId, data) { await updateDoc(doc(browserDb, "events", sessionId), { ...data, updatedAt: serverTimestamp() }); }
-export async function cancelSession(sessionId) { await updateDoc(doc(browserDb, "events", sessionId), { status: "cancelled", updatedAt: serverTimestamp() }); }
+export async function cancelSession(sessionId) { await updateDoc(doc(browserDb, "events", sessionId), { status: "inactive", updatedAt: serverTimestamp() }); }
 export async function deleteSession(sessionId) { await deleteDoc(doc(browserDb, "events", sessionId)); }
 
 export async function getFreeWebinar() {
