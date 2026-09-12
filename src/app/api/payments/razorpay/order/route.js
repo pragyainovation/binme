@@ -10,7 +10,8 @@ export async function POST(request) {
     if (!token) return Response.json({ error: "Authentication required." }, { status: 401 });
     const { adminAuth } = getAdminServices();
     const user = await adminAuth.verifyIdToken(token);
-    return Response.json(await createRazorpayOrder(user.uid, (await request.json()).sessionId));
+    const { sessionId, couponCode } = await request.json();
+    return Response.json(await createRazorpayOrder(user.uid, sessionId, couponCode));
   } catch (error) {
     console.error("Razorpay order failed", error);
     return Response.json({ error: error.message || "Unable to create payment order." }, { status: error.status || 500 });

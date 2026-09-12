@@ -63,6 +63,10 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /coupons/{couponId} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
     match /courses/{courseId} {
       allow read: if resource.data.status == "published" || isAdmin() || isEnrolledInCourse(courseId);
       allow create, update, delete: if isAdmin();

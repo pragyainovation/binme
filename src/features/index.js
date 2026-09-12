@@ -4,3 +4,4 @@ export * from "./registrations/registration.repository";
 export * from "./complaints/complaint.repository";
 export * from "./payments/payment.repository";
 export * from "./courses/course.repository";
+export * from "./coupons/coupon.repository";

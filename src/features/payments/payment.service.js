@@ -4,6 +4,36 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminServices } from "@/lib/firebase/admin";
 
 function failure(message, status) { const error = new Error(message); error.status = status; return error; }
+async function applyCoupon(db, couponCode, resourceType, amount) {
+  if (!couponCode?.trim()) return { amount, coupon: null };
+  const matches = await db.collection("coupons").where("code", "==", couponCode.trim().toUpperCase()).limit(1).get();
+  if (matches.empty) throw failure("Invalid coupon code.", 400);
+  const coupon = { id: matches.docs[0].id, ...matches.docs[0].data() };
+  if (!coupon.active || (coupon.expiresAt && new Date(`${coupon.expiresAt}T23:59:59+05:30`).getTime() < Date.now())) throw failure("This coupon has expired or is inactive.", 400);
+  if (coupon.appliesTo !== "all" && coupon.appliesTo !== resourceType) throw failure("This coupon is not valid for this purchase.", 400);
+  if (coupon.usageLimit && Number(coupon.usedCount || 0) >= Number(coupon.usageLimit)) throw failure("This coupon has reached its usage limit.", 400);
+  const discount = coupon.discountType === "percent" ? Math.round(amount * Number(coupon.discountValue)) / 100 : Number(coupon.discountValue);
+  return { amount: Math.max(0, amount - discount), coupon: { id: coupon.id, code: coupon.code, discount: Math.min(amount, discount) } };
+}
+async function completeFreePurchase(db, userId, resourceId, resourceType, coupon) {
+  const registrationRef = db.collection(resourceType === "course" ? "courseEnrollments" : "eventRegistrations").doc(`${userId}_${resourceId}`);
+  const resourceRef = db.collection(resourceType === "course" ? "courses" : "events").doc(resourceId);
+  await db.runTransaction(async (transaction) => {
+    const [registrationSnap, resourceSnap, couponSnap] = await Promise.all([
+      transaction.get(registrationRef), transaction.get(resourceRef), coupon ? transaction.get(db.collection("coupons").doc(coupon.id)) : Promise.resolve(null),
+    ]);
+    if (!resourceSnap.exists) throw failure("Purchase item not found.", 404);
+    if (coupon && (!couponSnap.exists || !couponSnap.data().active || (couponSnap.data().usageLimit && Number(couponSnap.data().usedCount || 0) >= Number(couponSnap.data().usageLimit)))) throw failure("Coupon is no longer available.", 409);
+    if (coupon) transaction.update(couponSnap.ref, { usedCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() });
+    if (registrationSnap.exists) return;
+    if (resourceType === "course") {
+      const validityDays = Number(resourceSnap.data().validityDays);
+      transaction.set(registrationRef, { userId, courseId: resourceId, accessType: "paid", status: "enrolled", paymentStatus: "free_coupon", couponCode: coupon?.code || null, enrolledAt: FieldValue.serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + validityDays * 86400000), updatedAt: FieldValue.serverTimestamp() });
+      transaction.update(resourceRef, { enrollmentCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() });
+    } else transaction.set(registrationRef, { userId, eventId: resourceId, status: "registered", paymentStatus: "free_coupon", couponCode: coupon?.code || null, registeredAt: FieldValue.serverTimestamp() });
+  });
+  return { free: true, success: true };
+}
 function razorpayConfig() {
   const keyId = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
@@ -37,6 +67,15 @@ async function markPaymentCaptured(orderId, paymentDetails) {
     const payment = paymentSnap.data();
     const registrationRef = registrationRefFor(payment);
     const registrationSnap = await transaction.get(registrationRef);
+    const courseSnap = payment.resourceType === "course" ? await transaction.get(db.collection("courses").doc(payment.courseId)) : null;
+
+    if (payment.coupon?.id) {
+      const couponRef = db.collection("coupons").doc(payment.coupon.id);
+      const couponSnap = await transaction.get(couponRef);
+      const coupon = couponSnap.data();
+      if (!couponSnap.exists || !coupon.active || (coupon.usageLimit && Number(coupon.usedCount || 0) >= Number(coupon.usageLimit))) throw failure("Coupon is no longer available.", 409);
+      transaction.update(couponRef, { usedCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() });
+    }
 
     transaction.set(paymentRef, {
       paymentId: paymentDetails.id,
@@ -48,7 +87,6 @@ async function markPaymentCaptured(orderId, paymentDetails) {
 
     if (!registrationSnap.exists) {
       if (payment.resourceType === "course") {
-        const courseSnap = await transaction.get(db.collection("courses").doc(payment.courseId));
         const validityDays = Number(courseSnap.data()?.validityDays);
         if (!Number.isInteger(validityDays) || validityDays < 1) throw failure("This paid course has no valid access period.", 409);
         transaction.set(registrationRef, { userId: payment.userId, courseId: payment.courseId, accessType: "paid", status: "enrolled", paymentStatus: "captured", paymentId: paymentDetails.id, paymentOrderId: orderId, enrolledAt: FieldValue.serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + validityDays * 24 * 60 * 60 * 1000), updatedAt: FieldValue.serverTimestamp() });
@@ -68,17 +106,19 @@ async function markPaymentCaptured(orderId, paymentDetails) {
   });
 }
 
-export async function createRazorpayOrder(userId, sessionId) {
+export async function createRazorpayOrder(userId, sessionId, couponCode) {
   const { adminDb: db } = getAdminServices();
   const sessionSnap = await db.collection("events").doc(sessionId).get();
   if (!sessionSnap.exists) throw failure("Session not found.", 404);
   const session = sessionSnap.data();
   if (session.accessType !== "paid" || Number(session.price) <= 0) throw failure("This session does not require payment.", 400);
   const { keyId } = razorpayConfig();
+  const pricing = await applyCoupon(db, couponCode, "event", Number(session.price));
+  if (pricing.amount === 0) return completeFreePurchase(db, userId, sessionId, "event", pricing.coupon);
   const order = await razorpayRequest("/orders", {
     method: "POST",
     body: JSON.stringify({
-      amount: Math.round(Number(session.price) * 100),
+      amount: Math.round(pricing.amount * 100),
       currency: "INR",
       receipt: `event_${sessionId}_${Date.now()}`.slice(0, 40),
       notes: { eventId: sessionId, userId },
@@ -88,7 +128,7 @@ export async function createRazorpayOrder(userId, sessionId) {
     orderId: order.id,
     userId,
     eventId: sessionId,
-    amount: order.amount,
+    amount: order.amount, originalAmount: Math.round(Number(session.price) * 100), coupon: pricing.coupon,
     currency: order.currency,
     status: "created",
     createdAt: FieldValue.serverTimestamp(),
@@ -97,7 +137,7 @@ export async function createRazorpayOrder(userId, sessionId) {
   return { orderId: order.id, amount: order.amount, currency: order.currency, keyId };
 }
 
-export async function createCourseRazorpayOrder(userId, courseId) {
+export async function createCourseRazorpayOrder(userId, courseId, couponCode) {
   const { adminDb: db } = getAdminServices();
   const courseSnap = await db.collection("courses").doc(courseId).get();
   if (!courseSnap.exists) throw failure("Course not found.", 404);
@@ -105,8 +145,10 @@ export async function createCourseRazorpayOrder(userId, courseId) {
   if (course.status !== "published" || course.accessType !== "paid" || Number(course.price) <= 0) throw failure("This course does not require payment.", 400);
   if (!Number.isInteger(Number(course.validityDays)) || Number(course.validityDays) < 1) throw failure("This paid course does not have a valid access period.", 409);
   const { keyId } = razorpayConfig();
-  const order = await razorpayRequest("/orders", { method: "POST", body: JSON.stringify({ amount: Math.round(Number(course.price) * 100), currency: "INR", receipt: `course_${courseId}_${Date.now()}`.slice(0, 40), notes: { courseId, userId, resourceType: "course" } }) });
-  await db.collection("payments").doc(order.id).set({ orderId: order.id, userId, courseId, resourceType: "course", amount: order.amount, currency: order.currency, status: "created", createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+  const pricing = await applyCoupon(db, couponCode, "course", Number(course.price));
+  if (pricing.amount === 0) return completeFreePurchase(db, userId, courseId, "course", pricing.coupon);
+  const order = await razorpayRequest("/orders", { method: "POST", body: JSON.stringify({ amount: Math.round(pricing.amount * 100), currency: "INR", receipt: `course_${courseId}_${Date.now()}`.slice(0, 40), notes: { courseId, userId, resourceType: "course", couponCode: pricing.coupon?.code || "" } }) });
+  await db.collection("payments").doc(order.id).set({ orderId: order.id, userId, courseId, resourceType: "course", amount: order.amount, originalAmount: Math.round(Number(course.price) * 100), coupon: pricing.coupon, currency: order.currency, status: "created", createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
   return { orderId: order.id, amount: order.amount, currency: order.currency, keyId };
 }
 

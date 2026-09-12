@@ -16,6 +16,7 @@ export default function SessionDetailPage({ params }) {
   const [message, setMessage] = useState("");
   const [user, setUser] = useState(null);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -83,9 +84,10 @@ export default function SessionDetailPage({ params }) {
     setMessage("");
     try {
       const token = await user.getIdToken();
-      const orderResponse = await fetch("/api/payments/razorpay/order", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: session.id }) });
+      const orderResponse = await fetch("/api/payments/razorpay/order", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: session.id, couponCode }) });
       const order = await orderResponse.json();
       if (!orderResponse.ok) throw new Error(order.error || "Unable to start payment.");
+      if (order.free) { setAlreadyRegistered(true); setMessage("Coupon applied. You are registered."); return; }
       await new Promise((resolve, reject) => {
         const existing = document.querySelector("script[src='https://checkout.razorpay.com/v1/checkout.js']");
         if (existing) return resolve();
@@ -184,9 +186,9 @@ export default function SessionDetailPage({ params }) {
             {registering ? <Loader size={18} label="Registering" /> : "Register Now"}
           </button>
         ) : showPaymentButton ? (
-          <button onClick={handlePayment} disabled={paying || !user} style={styles.button}>
+          <><input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Coupon code (optional)" style={styles.couponInput} /><button onClick={handlePayment} disabled={paying || !user} style={styles.button}>
             {paying ? <Loader size={18} label="Opening payment" /> : `Pay INR ${Number(session.price).toFixed(2)} and Register`}
-          </button>
+          </button></>
         ) : (
           <div style={styles.successBox}>
             <strong>✓ {session.courseId ? "Your course access is confirmed" : "You are registered"}</strong>
@@ -264,6 +266,7 @@ const styles = {
     marginTop: 18,
     cursor: "pointer",
   },
+  couponInput: { display: "block", marginTop: 18, padding: "12px 14px", border: "1px solid #d8d8d8", borderRadius: 10, fontSize: 16 },
   linkButton: {
     display: "inline-block",
     background: "#d9f95d",
