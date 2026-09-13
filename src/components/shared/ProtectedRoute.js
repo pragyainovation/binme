@@ -14,7 +14,9 @@ export default function ProtectedRoute({ children, requiredRole = null, redirect
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        router.replace(redirectTo);
+        const postLogoutRedirect = window.sessionStorage.getItem("binme:postLogoutRedirect");
+        if (postLogoutRedirect) window.sessionStorage.removeItem("binme:postLogoutRedirect");
+        router.replace(postLogoutRedirect || redirectTo);
         setReady(true);
         setAllowed(false);
         return;

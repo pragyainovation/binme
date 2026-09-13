@@ -29,8 +29,12 @@ export default function AdminDashboardLayout({ children }) {
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
+      window.sessionStorage.setItem("binme:postLogoutRedirect", "/");
       await logout();
       router.replace("/");
+    } catch (error) {
+      window.sessionStorage.removeItem("binme:postLogoutRedirect");
+      console.error("Admin logout failed", error);
     } finally {
       setLoggingOut(false);
     }

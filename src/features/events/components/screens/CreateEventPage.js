@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation";
 import { createSession, getAdminCourses } from "@/features";
 import { IST_TIMEZONE, parseTimeInput } from "@/lib/time/ist";
 import Loader from "@/components/ui/Loader";
+import RichTextEditor from "@/features/policies/components/RichTextEditor";
+import { richTextToPlainText, toRichTextValue } from "@/features/policies/policy.content";
 
 export default function CreateSessionPage() {
   const router = useRouter();
   const [form, setForm] = useState({
     title: "",
-    description: "",
+    description: toRichTextValue(null),
     date: "",
     time: "",
     duration: "60",
@@ -44,6 +46,7 @@ export default function CreateSessionPage() {
     try {
       await createSession({
         ...form,
+        description: richTextToPlainText(form.description),
         time: normalizedTime,
         timezone: IST_TIMEZONE,
         duration: Number(form.duration),
@@ -66,7 +69,7 @@ export default function CreateSessionPage() {
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <label style={styles.label}>Title<input name="title" value={form.title} onChange={handleChange} style={styles.input} required /></label>
-          <label style={styles.label}>Description<textarea name="description" value={form.description} onChange={handleChange} style={styles.textarea} required /></label>
+          <div style={styles.label}><span>Description</span><RichTextEditor value={form.description} onChange={(description) => setForm((current) => ({ ...current, description }))} placeholder="Write the session description..." /></div>
           <label style={styles.label}>Date<input name="date" type="date" value={form.date} onChange={handleChange} style={styles.input} required /></label>
           <label style={styles.label}>Time (IST)<input name="time" type="time" value={form.time} onChange={handleChange} style={styles.input} required /></label>
           <label style={styles.label}>Duration<input name="duration" type="number" value={form.duration} onChange={handleChange} style={styles.input} required /></label>
