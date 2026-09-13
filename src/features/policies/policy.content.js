@@ -7,3 +7,10 @@ export function toRichTextValue(content) {
   }
   return [{ type: "paragraph", children: [{ text: "" }] }];
 }
+
+export function richTextToPlainText(content) {
+  if (typeof content === "string") return content.trim();
+  if (!Array.isArray(content)) return "";
+  const readNode = (node) => node.text || (node.children || []).map(readNode).join("");
+  return content.map(readNode).filter(Boolean).join("\n\n").trim();
+}

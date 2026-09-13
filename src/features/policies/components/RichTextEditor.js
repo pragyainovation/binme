@@ -57,7 +57,7 @@ function Leaf({ attributes, children, leaf }) {
   return <span {...attributes}>{value}</span>;
 }
 
-export default function RichTextEditor({ value, onChange }) {
+export default function RichTextEditor({ value, onChange, placeholder = "Write content here..." }) {
   const editor = useMemo(() => withHistory(withReact(createEditor())), []);
   const renderElement = useCallback((props) => <Element {...props} />, []);
   const renderLeaf = useCallback((props) => <Leaf {...props} />, []);
@@ -73,7 +73,7 @@ export default function RichTextEditor({ value, onChange }) {
       <ToolbarButton block format="bulleted-list">• List</ToolbarButton>
       <ToolbarButton block format="numbered-list">1. List</ToolbarButton>
     </div>
-    <Editable renderElement={renderElement} renderLeaf={renderLeaf} placeholder="Write policy content here..." spellCheck onKeyDown={(event) => {
+    <Editable renderElement={renderElement} renderLeaf={renderLeaf} placeholder={placeholder} spellCheck onKeyDown={(event) => {
       for (const hotkey in HOTKEYS) {
         if (isHotkey(hotkey, event)) {
           event.preventDefault();

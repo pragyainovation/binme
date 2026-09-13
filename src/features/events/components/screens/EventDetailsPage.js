@@ -146,6 +146,7 @@ export default function SessionDetailPage({ params }) {
 
   const showRegisterButton = !sessionUnavailable && !sessionEnded && !alreadyRegistered && !session?.courseId && session?.accessType !== "paid";
   const showPaymentButton = !sessionUnavailable && !sessionEnded && !alreadyRegistered && !session?.courseId && session?.accessType === "paid";
+  const showJoinInstructions = !sessionUnavailable && !sessionEnded && (alreadyRegistered || session?.courseId) && !showJoinButton;
 
   if (loading) return <div style={{ padding: 40 }}><Loader label="Loading session" /></div>;
   if (!session) return <div style={{ padding: 40 }}>Session not found.</div>;
@@ -180,6 +181,8 @@ export default function SessionDetailPage({ params }) {
             <p>Join the live meeting now.</p>
           </div>
         ) : null}
+
+        {showJoinInstructions ? <div style={styles.joinInfoBox}><strong>Joining instructions</strong><p>The Join Google Meet button will appear 5 minutes before the scheduled start time and remain available until the session ends.</p></div> : null}
 
         {sessionUnavailable ? null : showRegisterButton ? (
           <button onClick={handleRegister} disabled={registering} style={styles.button}>
@@ -256,6 +259,7 @@ const styles = {
     padding: "16px",
     color: "#7a2a2a",
   },
+  joinInfoBox: { marginTop: 18, padding: "14px 16px", borderRadius: 10, background: "#eef4ff", color: "#2941a8", lineHeight: 1.5 },
   button: {
     background: "#16211f",
     color: "#fff",

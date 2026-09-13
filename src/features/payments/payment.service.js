@@ -112,9 +112,9 @@ export async function createRazorpayOrder(userId, sessionId, couponCode) {
   if (!sessionSnap.exists) throw failure("Session not found.", 404);
   const session = sessionSnap.data();
   if (session.accessType !== "paid" || Number(session.price) <= 0) throw failure("This session does not require payment.", 400);
-  const { keyId } = razorpayConfig();
   const pricing = await applyCoupon(db, couponCode, "event", Number(session.price));
   if (pricing.amount === 0) return completeFreePurchase(db, userId, sessionId, "event", pricing.coupon);
+  const { keyId } = razorpayConfig();
   const order = await razorpayRequest("/orders", {
     method: "POST",
     body: JSON.stringify({
@@ -144,9 +144,9 @@ export async function createCourseRazorpayOrder(userId, courseId, couponCode) {
   const course = courseSnap.data();
   if (course.status !== "published" || course.accessType !== "paid" || Number(course.price) <= 0) throw failure("This course does not require payment.", 400);
   if (!Number.isInteger(Number(course.validityDays)) || Number(course.validityDays) < 1) throw failure("This paid course does not have a valid access period.", 409);
-  const { keyId } = razorpayConfig();
   const pricing = await applyCoupon(db, couponCode, "course", Number(course.price));
   if (pricing.amount === 0) return completeFreePurchase(db, userId, courseId, "course", pricing.coupon);
+  const { keyId } = razorpayConfig();
   const order = await razorpayRequest("/orders", { method: "POST", body: JSON.stringify({ amount: Math.round(pricing.amount * 100), currency: "INR", receipt: `course_${courseId}_${Date.now()}`.slice(0, 40), notes: { courseId, userId, resourceType: "course", couponCode: pricing.coupon?.code || "" } }) });
   await db.collection("payments").doc(order.id).set({ orderId: order.id, userId, courseId, resourceType: "course", amount: order.amount, originalAmount: Math.round(Number(course.price) * 100), coupon: pricing.coupon, currency: order.currency, status: "created", createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
   return { orderId: order.id, amount: order.amount, currency: order.currency, keyId };
