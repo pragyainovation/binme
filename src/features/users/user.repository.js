@@ -17,3 +17,11 @@ export async function getAllUsers() {
   const snapshot = await getDocs(query(collection(browserDb, "users"), orderBy("createdAt", "desc"), limit(50)));
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
 }
+
+export async function getRegisteredUsers() {
+  const snapshot = await getDocs(collection(browserDb, "users"));
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .filter((user) => user.role === "user")
+    .sort((first, second) => String(second.createdAt || "").localeCompare(String(first.createdAt || "")));
+}
