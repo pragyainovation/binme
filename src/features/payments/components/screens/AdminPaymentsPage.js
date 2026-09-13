@@ -104,7 +104,7 @@ function AdminPaymentsContent() {
     { header: "Razorpay payment ID", accessorKey: "paymentId", cell: ({ row }) => row.original.paymentId ? <div style={styles.idCell}><code style={styles.paymentId}>{row.original.paymentId}</code><button type="button" onClick={() => copyPaymentId(row.original.paymentId)} style={styles.copyButton}>{copiedPaymentId === row.original.paymentId ? "Copied" : "Copy"}</button></div> : "-" },
     { header: "Date", id: "date", accessorFn: (item) => item.capturedAt?.seconds || item.createdAt?.seconds || 0, cell: ({ row }) => formatTimestamp(row.original.capturedAt || row.original.createdAt) },
     { header: "Refund", accessorKey: "refundStatus", cell: ({ row }) => row.original.refundStatus ? <span style={styles.refund}>{row.original.refundStatus}</span> : "-" },
-    { header: "Action", id: "action", cell: ({ row }) => row.original.sessionStatus === "cancelled" && row.original.status === "captured" ? <button type="button" style={styles.refundButton} disabled={updatingOrderId === row.original.orderId} onClick={() => markRefunded(row.original)}>{updatingOrderId === row.original.orderId ? <Loader size={18} label="Updating refund" /> : "Mark refunded"}</button> : "-" },
+    { header: "Action", id: "action", cell: ({ row }) => row.original.sessionStatus === "cancelled" && row.original.status === "captured" ? <button type="button" style={styles.refundButton} disabled={updatingOrderId === row.original.orderId} onClick={() => markRefunded(row.original)} aria-label="Mark refunded" title="Mark refunded">{updatingOrderId === row.original.orderId ? <Loader size={18} label="Updating refund" /> : "↩"}</button> : "-" },
   ];
 
   return (

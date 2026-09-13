@@ -131,9 +131,9 @@ export default function DashboardPage() {
         const session = row.original;
         const canJoin = !session.isInactive && session.isRegistered && session.meetLink && isSessionJoinable(session, now);
         return canJoin ? (
-          <a href={session.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton}>Join Webinar</a>
+          <a href={session.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton} aria-label="Join webinar" title="Join webinar">▶</a>
         ) : (
-          <Link href={`/dashboard/events/${session.slug || session.id}`} style={styles.linkButton}>View Details</Link>
+          <Link href={`/dashboard/events/${session.slug || session.id}`} style={styles.linkButton} aria-label="View session details" title="View session details">👁</Link>
         );
       },
     },

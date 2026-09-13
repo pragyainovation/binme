@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAdminCourses, getSessionById, updateSession } from "@/features";
 import { IST_TIMEZONE, parseTimeInput } from "@/lib/time/ist";
+import Loader from "@/components/ui/Loader";
 
 export default function EditSessionPage({ params }) {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function EditSessionPage({ params }) {
     showOnLanding: false,
   });
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [courses, setCourses] = useState([]);
 
@@ -59,16 +61,23 @@ export default function EditSessionPage({ params }) {
       setError("Enter time in 12-hour format, for example 07:00 PM.");
       return;
     }
-    await updateSession(params.id, {
-      ...form,
-      time: normalizedTime,
-      timezone: IST_TIMEZONE,
-      duration: Number(form.duration),
-      accessType: form.accessType,
-      price: form.accessType === "paid" ? Number(form.price) : 0,
-      courseId: form.courseId || null,
-    });
-    router.push(`/admin/dashboard/events/${params.id}`);
+    setSaving(true);
+    try {
+      await updateSession(params.id, {
+        ...form,
+        time: normalizedTime,
+        timezone: IST_TIMEZONE,
+        duration: Number(form.duration),
+        accessType: form.accessType,
+        price: form.accessType === "paid" ? Number(form.price) : 0,
+        courseId: form.courseId || null,
+      });
+      router.push(`/admin/dashboard/events/${params.id}`);
+    } catch (submitError) {
+      setError(submitError.message || "Unable to update session.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) return <div style={{ padding: 40 }}>Loading session...</div>;
@@ -90,7 +99,7 @@ export default function EditSessionPage({ params }) {
           {form.accessType === "paid" ? <label style={styles.label}>Price (INR)<input name="price" type="number" min="1" step="0.01" value={form.price} onChange={handleChange} style={styles.input} required /></label> : null}
           <label style={styles.checkLabel}><input name="showOnLanding" type="checkbox" checked={form.showOnLanding} onChange={handleChange} /> Show on landing page</label>
           {error ? <p style={styles.error}>{error}</p> : null}
-          <button type="submit" style={styles.button}>Update Session</button>
+          <button type="submit" style={styles.button} disabled={saving}>{saving ? <Loader size={18} label="Updating session" /> : "Update Session"}</button>
         </form>
       </div>
     </main>

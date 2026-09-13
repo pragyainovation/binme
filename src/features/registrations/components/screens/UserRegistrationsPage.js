@@ -31,10 +31,10 @@ export default function MyRegistrationsPage() {
       header: "Actions",
       id: "actions",
       cell: ({ row }) => row.original.freeWebinar ? (
-        row.original.freeWebinar.meetLink && isSessionJoinable(row.original.freeWebinar, now) ? <a href={row.original.freeWebinar.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton}>Join Webinar</a> : <Link href="/dashboard/free-webinar" style={styles.linkButton}>View Details</Link>
+        row.original.freeWebinar.meetLink && isSessionJoinable(row.original.freeWebinar, now) ? <a href={row.original.freeWebinar.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton} aria-label="Join webinar" title="Join webinar">▶</a> : <Link href="/dashboard/free-webinar" style={styles.linkButton} aria-label="View webinar details" title="View webinar details">👁</Link>
       ) : row.original.session?.status !== "inactive" && row.original.session?.meetLink && isSessionJoinable(row.original.session, now) ? (
-        <a href={row.original.session.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton}>Join Webinar</a>
-      ) : <Link href={`/dashboard/events/${row.original.sessionId}`} style={styles.linkButton}>View Details</Link>,
+        <a href={row.original.session.meetLink} target="_blank" rel="noreferrer" style={styles.linkButton} aria-label="Join webinar" title="Join webinar">▶</a>
+      ) : <Link href={`/dashboard/events/${row.original.sessionId}`} style={styles.linkButton} aria-label="View session details" title="View session details">👁</Link>,
     },
   ];
 

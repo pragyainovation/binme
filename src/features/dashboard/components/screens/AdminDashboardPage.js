@@ -16,7 +16,7 @@ import DataTable from "@/components/ui/DataTable";
 import Loader from "@/components/ui/Loader";
 
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState({ totalUsers: 0, upcomingSessions: 0, totalRegistrations: 0 });
+  const [stats, setStats] = useState({ totalUsers: 0, upcomingSessions: 0 });
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState(null);
@@ -30,10 +30,13 @@ export default function AdminDashboardPage() {
     const freeWebinars = await getFreeWebinarsWithRegistrations();
     const freeWebinar = freeWebinars.find((webinar) => webinar.status !== "inactive");
     const allSessions = freeWebinar ? [...sessionList, { ...freeWebinar, isFreeWebinar: true }] : sessionList;
-    const totalRegistrations = allSessions.reduce((sum, session) => sum + Number(session.registrationCount || 0), 0);
+    const upcomingSessions = allSessions.filter((session) => {
+      const start = parseISTDate(session.date, session.time);
+      return session.status !== "inactive" && start && start.getTime() > Date.now();
+    });
 
-    setStats({ totalUsers: users.length, upcomingSessions: allSessions.length, totalRegistrations });
-    setSessions(allSessions);
+    setStats({ totalUsers: users.filter((user) => user.role === "user").length, upcomingSessions: upcomingSessions.length });
+    setSessions(upcomingSessions);
     setLoading(false);
   };
 
@@ -76,10 +79,11 @@ export default function AdminDashboardPage() {
       id: "actions",
       cell: ({ row }) => {
         const session = row.original;
+        if (session.status === "inactive") return <div style={styles.rowButtons}><Link href={`/admin/dashboard/events/${session.id}`} style={styles.viewButton} aria-label="View session" title="View session">👁</Link></div>;
         return <div style={styles.rowButtons}>
-          <Link href={`/admin/dashboard/events/${session.id}`} style={styles.viewButton}>View</Link>
-          <button type="button" style={styles.actionButton} disabled={actionId === session.id} onClick={() => deactivate(session)}>Deactivate Session</button>
-          <button type="button" style={styles.deleteButton} disabled={actionId === session.id} onClick={() => remove(session)}>Delete Session</button>
+          <Link href={`/admin/dashboard/events/${session.id}`} style={styles.viewButton} aria-label="View session" title="View session">👁</Link>
+          <button type="button" style={styles.actionButton} disabled={actionId === session.id} onClick={() => deactivate(session)} aria-label="Deactivate session" title="Deactivate session">{actionId === session.id ? <Loader size={18} label="Deactivating session" /> : "⏹"}</button>
+          <button type="button" style={styles.deleteButton} disabled={actionId === session.id} onClick={() => remove(session)} aria-label="Delete session" title="Delete session">{actionId === session.id ? <Loader size={18} label="Deleting session" /> : "🗑"}</button>
         </div>;
       },
     },
@@ -103,7 +107,6 @@ export default function AdminDashboardPage() {
             <section style={styles.statGrid}>
               <div style={styles.card}><span style={styles.cardLabel}>Total Users</span><strong style={styles.cardValue}>{stats.totalUsers}</strong></div>
               <div style={styles.card}><span style={styles.cardLabel}>Upcoming Sessions</span><strong style={styles.cardValue}>{stats.upcomingSessions}</strong></div>
-              <div style={styles.card}><span style={styles.cardLabel}>Total Registrations</span><strong style={styles.cardValue}>{stats.totalRegistrations}</strong></div>
             </section>
 
             <section style={styles.section}>
@@ -177,7 +180,7 @@ const styles = {
     letterSpacing: 0.08,
     textTransform: "uppercase",
   },
-  rowButtons: { display: "flex", justifyContent: "flex-end" },
+  rowButtons: { display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, flexWrap: "wrap" },
   smallButton: {
     background: "#eef1ff",
     color: "#1e2c35",
@@ -185,9 +188,9 @@ const styles = {
     borderRadius: 10,
     fontWeight: 700,
   },
-  viewButton: { border: 0, borderRadius: 8, padding: "8px 11px", background: "#dfe8ff", color: "#2941a8", fontWeight: 700 },
-  actionButton: { border: 0, borderRadius: 8, padding: "8px 11px", background: "#fef2d8", color: "#8a5a07", fontWeight: 700, cursor: "pointer" },
-  deleteButton: { border: 0, borderRadius: 8, padding: "8px 11px", background: "#f7d9d9", color: "#a33131", fontWeight: 700, cursor: "pointer" },
+  viewButton: { border: 0, borderRadius: 8, padding: "8px 11px", background: "#dfe8ff", color: "#2941a8", fontWeight: 700, whiteSpace: "nowrap" },
+  actionButton: { border: 0, borderRadius: 8, padding: "8px 11px", background: "#fef2d8", color: "#8a5a07", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" },
+  deleteButton: { border: 0, borderRadius: 8, padding: "8px 11px", background: "#f7d9d9", color: "#a33131", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" },
   loadingCard: {
     background: "rgba(255,255,255,0.7)",
     border: "1px solid rgba(20,29,26,0.05)",
