@@ -19,6 +19,7 @@ export default function AdminDashboardLayout({ children }) {
     { href: "/admin/dashboard/events/create", label: "Create Event" },
     { href: "/admin/dashboard/courses", label: "Courses" },
     { href: "/admin/dashboard/courses/create", label: "Create Course" },
+    { href: "/admin/dashboard/users", label: "Users" },
     { href: "/admin/dashboard/payments", label: "Payments" },
     { href: "/admin/dashboard/coupons", label: "Coupons" },
     { href: "/admin/dashboard/complaints", label: "Complaints" },

@@ -17,12 +17,12 @@ export async function requestPasswordReset(email, appUrl) {
   try {
     user = await adminAuth.getUserByEmail(normalizedEmail);
   } catch (error) {
-    if (error.code === "auth/user-not-found") return;
+    if (error.code === "auth/user-not-found") return false;
     throw error;
   }
 
   const profile = await adminDb.collection("users").doc(user.uid).get();
-  if (profile.exists && profile.data().role === "admin") return;
+  if (profile.exists && profile.data().role === "admin") return false;
 
   const token = randomBytes(32).toString("hex");
   const now = Date.now();
@@ -45,6 +45,7 @@ export async function requestPasswordReset(email, appUrl) {
 
   const resetUrl = `${appUrl.replace(/\/$/, "")}/reset-password?uid=${encodeURIComponent(user.uid)}&token=${token}`;
   await sendEmail({ to: user.email, ...createPasswordResetEmail(resetUrl), emailType: "password_reset" });
+  return true;
 }
 
 export async function resetPassword({ uid, token, password }) {
