@@ -26,7 +26,7 @@ export async function sendEventReminderEmails(adminUserId, { eventId, eventType 
   if (!recipients.length) return { registered: registrations.size, sent: 0, failed: 0 };
 
   const email = createEventReminderEmail(event);
-  const result = await Promise.allSettled(recipients.map((to) => sendEmail({ to, ...email })));
+  const result = await Promise.allSettled(recipients.map((to) => sendEmail({ to, ...email, emailType: "event_reminder" })));
   const sent = result.filter((item) => item.status === "fulfilled").length;
   return { registered: registrations.size, sent, failed: recipients.length - sent };
 }

@@ -108,14 +108,13 @@ export default function AdminSessionsPage() {
       id: "actions",
       cell: ({ row }) => {
         const session = row.original;
+        if (session.status === "inactive") return <Link href={`/admin/dashboard/events/${session.id}`} style={styles.viewLink}>View</Link>;
         return <div>
           <Link href={`/admin/dashboard/events/${session.id}`} style={styles.viewLink} aria-label="View" title="View">&#128065;</Link>
           <Link href={`/admin/dashboard/events/${session.id}/edit`} style={styles.editLink} aria-label="Edit" title="Edit">&#9998;</Link>
-          {session.status !== "inactive" ? <>
-            <button type="button" style={styles.notificationButton} disabled={reminderId === session.id} onClick={() => sendReminder(session)} aria-label="Send email reminder" title="Send email reminder">{reminderId === session.id ? <Loader size={18} label="Sending email reminder" /> : "✉"}</button>
-            <button type="button" style={styles.actionButton} disabled={actionId === session.id} onClick={() => deactivate(session)} aria-label="Deactivate" title="Deactivate">&#9209;</button>
-          </> : null}
-          <button type="button" style={styles.deleteButton} disabled={actionId === session.id} onClick={() => remove(session)} aria-label="Delete" title="Delete">&#128465;</button>
+          <button type="button" style={styles.notificationButton} disabled={reminderId === session.id} onClick={() => sendReminder(session)} aria-label="Send email reminder" title="Send email reminder">{reminderId === session.id ? <Loader size={18} label="Sending email reminder" /> : "✉"}</button>
+          <button type="button" style={styles.actionButton} disabled={actionId === session.id} onClick={() => deactivate(session)} aria-label="Deactivate" title="Deactivate">{actionId === session.id ? <Loader size={18} label="Deactivating" /> : "⏹"}</button>
+          <button type="button" style={styles.deleteButton} disabled={actionId === session.id} onClick={() => remove(session)} aria-label="Delete" title="Delete">{actionId === session.id ? <Loader size={18} label="Deleting" /> : "🗑"}</button>
         </div>;
       },
     },

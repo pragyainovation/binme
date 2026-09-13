@@ -76,10 +76,11 @@ export default function AdminDashboardPage() {
       id: "actions",
       cell: ({ row }) => {
         const session = row.original;
+        if (session.status === "inactive") return <div style={styles.rowButtons}><Link href={`/admin/dashboard/events/${session.id}`} style={styles.viewButton}>View</Link></div>;
         return <div style={styles.rowButtons}>
           <Link href={`/admin/dashboard/events/${session.id}`} style={styles.viewButton}>View</Link>
-          <button type="button" style={styles.actionButton} disabled={actionId === session.id} onClick={() => deactivate(session)}>Deactivate Session</button>
-          <button type="button" style={styles.deleteButton} disabled={actionId === session.id} onClick={() => remove(session)}>Delete Session</button>
+          <button type="button" style={styles.actionButton} disabled={actionId === session.id} onClick={() => deactivate(session)}>{actionId === session.id ? <Loader size={18} label="Deactivating session" /> : "Deactivate Session"}</button>
+          <button type="button" style={styles.deleteButton} disabled={actionId === session.id} onClick={() => remove(session)}>{actionId === session.id ? <Loader size={18} label="Deleting session" /> : "Delete Session"}</button>
         </div>;
       },
     },

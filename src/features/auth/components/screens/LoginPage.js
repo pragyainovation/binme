@@ -71,6 +71,8 @@ export default function LoginPage() {
             />
           </label>
 
+          <a href="/forgot-password" style={styles.link}>Forgot Password?</a>
+
           {error ? <p style={styles.error}>{error}</p> : null}
 
           <button type="submit" style={styles.button} disabled={loading}>
