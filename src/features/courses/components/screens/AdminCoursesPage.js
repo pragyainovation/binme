@@ -15,7 +15,7 @@ export default function AdminCoursesPage() {
     { header: "Course", accessorKey: "title", cell: ({ row }) => <strong>{row.original.title}</strong> },
     { header: "Access", accessorKey: "accessType", cell: ({ row }) => row.original.accessType === "paid" ? `Paid · ₹${Number(row.original.price || 0).toFixed(2)}` : "Free" },
     { header: "Status", accessorKey: "status", cell: ({ row }) => row.original.status },
-    { header: "Actions", id: "actions", cell: ({ row }) => <div style={styles.actions}><Link href={`/admin/dashboard/courses/${row.original.id}/edit`} style={styles.edit}>Edit</Link><Link href={`/admin/dashboard/courses/${row.original.id}/lessons`} style={styles.lessons}>Lessons</Link><button onClick={() => remove(row.original)} style={styles.delete}>Delete</button></div> },
+    { header: "Actions", id: "actions", cell: ({ row }) => <div style={styles.actions}><Link href={`/admin/dashboard/courses/${row.original.id}/edit`} style={styles.edit} aria-label="Edit course" title="Edit course">✏️</Link><Link href={`/admin/dashboard/courses/${row.original.id}/lessons`} style={styles.lessons} aria-label="Manage lessons" title="Manage lessons">📚</Link><button type="button" onClick={() => remove(row.original)} style={styles.delete} aria-label="Delete course" title="Delete course">🗑</button></div> },
   ];
   return <main style={styles.page}><div style={styles.container}><header style={styles.header}><div><p style={styles.eyebrow}>Learning</p><h1 style={styles.title}>Courses</h1></div><Link href="/admin/dashboard/courses/create" style={styles.primary}>Create Course</Link></header>{loading ? <Loader label="Loading courses" /> : <DataTable columns={columns} data={courses} emptyMessage="No courses created yet." />}</div></main>;
 }

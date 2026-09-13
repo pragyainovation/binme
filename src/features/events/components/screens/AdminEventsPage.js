@@ -108,7 +108,9 @@ export default function AdminSessionsPage() {
       id: "actions",
       cell: ({ row }) => {
         const session = row.original;
-        if (session.status === "inactive") return <Link href={`/admin/dashboard/events/${session.id}`} style={styles.viewLink}>View</Link>;
+        const start = parseISTDate(session.date, session.time);
+        const ended = start && now > start.getTime() + Number(session.duration || 0) * 60000;
+        if (session.status === "inactive" || ended) return <Link href={`/admin/dashboard/events/${session.id}`} style={styles.viewLink} aria-label="View session" title="View session">👁</Link>;
         return <div>
           <Link href={`/admin/dashboard/events/${session.id}`} style={styles.viewLink} aria-label="View" title="View">&#128065;</Link>
           <Link href={`/admin/dashboard/events/${session.id}/edit`} style={styles.editLink} aria-label="Edit" title="Edit">&#9998;</Link>
