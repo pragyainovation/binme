@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { browserDb } from "@/lib/firebase/client-firestore";
 
 const records = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -8,6 +8,8 @@ export async function getCourses() {
   return records(snapshot).sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
 }
 export async function getAdminCourses() { return records(await getDocs(query(collection(browserDb, "courses"), orderBy("updatedAt", "desc"), limit(50)))); }
+export async function getCourseEnrollmentCount(courseId) { return (await getCountFromServer(query(collection(browserDb, "courseEnrollments"), where("courseId", "==", courseId)))).data().count; }
+export async function getCourseEnrollments(courseId) { return records(await getDocs(query(collection(browserDb, "courseEnrollments"), where("courseId", "==", courseId)))); }
 export async function getCourseById(courseId) { const snapshot = await getDoc(doc(browserDb, "courses", courseId)); return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null; }
 export async function createCourse(data) { return (await addDoc(collection(browserDb, "courses"), { ...data, status: data.status || "published", enrollmentCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })).id; }
 export async function updateCourse(courseId, data) { await updateDoc(doc(browserDb, "courses", courseId), { ...data, updatedAt: serverTimestamp() }); }

@@ -6,6 +6,7 @@ import { browserAuth as auth } from "@/lib/firebase/client-auth";
 import { getSessionById, isUserRegistered, registerForSession } from "@/features";
 import { formatDateIST, formatTimeIST, isSessionJoinable, parseISTDate } from "@/lib/time/ist";
 import Loader from "@/components/ui/Loader";
+import { reportPaymentError } from "@/features/payments/payment-log.client";
 
 export default function SessionDetailPage({ params }) {
   const { slug } = use(params);
@@ -112,6 +113,7 @@ export default function SessionDetailPage({ params }) {
         checkout.open();
       });
     } catch (error) {
+      await reportPaymentError(user, { stage: "checkout", resourceType: "event", resourceId: session.id, message: error.message || "Payment checkout failed." });
       setMessage(error.message || "Payment failed.");
     } finally {
       setPaying(false);
