@@ -41,7 +41,7 @@ export default function AdminDashboardLayout({ children }) {
   };
 
   return (
-    <ProtectedRoute requiredRole="admin" redirectTo="/admin/login">
+    <ProtectedRoute requiredRole="admin" redirectTo="/">
       <div className="admin-dashboard-shell">
         <aside className={`admin-dashboard-sidebar ${menuOpen ? "open" : ""}`}>
           <div className="admin-dashboard-brand">BinMe Admin</div>

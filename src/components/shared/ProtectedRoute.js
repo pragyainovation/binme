@@ -29,7 +29,7 @@ export default function ProtectedRoute({ children, requiredRole = null, redirect
         setReady(true);
 
         if (!hasAccess) {
-          router.replace(requiredRole === "admin" ? "/admin/login" : "/");
+          router.replace("/");
         }
         return;
       }
