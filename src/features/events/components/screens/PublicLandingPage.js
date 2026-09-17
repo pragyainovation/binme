@@ -103,6 +103,7 @@ export default function Home() {
           <div className={`nav-links ${menuOpen ? "open" : ""}`}>
             <a href="/login">Login</a>
             <a href="/signup">Register</a>
+            <a href="/how-to-register">How to Register</a>
             <a href="#why">Why BinMe</a>
             <a href="#webinar">Free Webinar</a>
             <a href="#stories">Success Stories</a>
