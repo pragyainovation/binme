@@ -2,6 +2,7 @@ import "server-only";
 import crypto from "node:crypto";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminServices } from "@/lib/firebase/admin";
+import { sendPaymentReceiptEmail } from "@/features/payments/payment-receipt.service";
 
 function failure(message, status) { const error = new Error(message); error.status = status; return error; }
 async function applyCoupon(db, couponCode, resourceType, amount) {
@@ -104,6 +105,11 @@ async function markPaymentCaptured(orderId, paymentDetails) {
       });
     }
   });
+  try {
+    await sendPaymentReceiptEmail(orderId);
+  } catch (error) {
+    console.error("Payment receipt email failed", error);
+  }
 }
 
 export async function createRazorpayOrder(userId, sessionId, couponCode) {
@@ -161,6 +167,72 @@ export async function expireCourseEnrollment(userId, courseId) {
   if (data.accessType !== "paid" || data.status !== "enrolled" || !data.expiresAt || data.expiresAt.toMillis() > Date.now()) return { expired: false };
   await ref.set({ status: "expired", expiredAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   return { expired: true };
+}
+
+export async function manuallyEnrollInCourse(adminUserId, { userId, courseId, notes = "" }) {
+  if (!userId || !courseId) throw failure("A user and course are required.", 400);
+  const { adminDb: db } = getAdminServices();
+  const [adminSnap, userSnap, courseSnap] = await Promise.all([
+    db.collection("users").doc(adminUserId).get(),
+    db.collection("users").doc(userId).get(),
+    db.collection("courses").doc(courseId).get(),
+  ]);
+  if (adminSnap.data()?.role !== "admin") throw failure("Admin access required.", 403);
+  if (!userSnap.exists || userSnap.data()?.role !== "user") throw failure("Registered user not found.", 404);
+  if (!courseSnap.exists) throw failure("Course not found.", 404);
+
+  const course = courseSnap.data();
+  if (course.accessType !== "paid") throw failure("Manual cash enrollment is only needed for paid courses.", 400);
+  const validityDays = Number(course.validityDays);
+  if (!Number.isInteger(validityDays) || validityDays < 1) throw failure("This course does not have a valid access period.", 409);
+
+  const enrollmentRef = db.collection("courseEnrollments").doc(`${userId}_${courseId}`);
+  const paymentRef = db.collection("payments").doc(`cash_course_${courseId}_${Date.now()}_${userId}`.slice(0, 150));
+  await db.runTransaction(async (transaction) => {
+    const enrollmentSnap = await transaction.get(enrollmentRef);
+    const enrollment = enrollmentSnap.data();
+    const hasActiveAccess = enrollment?.status === "enrolled" && enrollment.expiresAt?.toMillis?.() > Date.now();
+    if (hasActiveAccess) throw failure("This user already has active access to this course.", 409);
+
+    transaction.set(enrollmentRef, {
+      userId,
+      courseId,
+      accessType: "paid",
+      status: "enrolled",
+      paymentStatus: "cash",
+      paymentId: null,
+      paymentOrderId: paymentRef.id,
+      enrolledAt: FieldValue.serverTimestamp(),
+      expiresAt: Timestamp.fromMillis(Date.now() + validityDays * 24 * 60 * 60 * 1000),
+      enrolledBy: adminUserId,
+      enrollmentSource: "admin_cash",
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+    transaction.set(paymentRef, {
+      orderId: paymentRef.id,
+      userId,
+      courseId,
+      resourceType: "course",
+      amount: Math.round(Number(course.price || 0) * 100),
+      originalAmount: Math.round(Number(course.price || 0) * 100),
+      currency: "INR",
+      status: "captured",
+      method: "cash",
+      source: "admin_manual_cash",
+      notes: String(notes || "").trim() || null,
+      capturedAt: FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      createdBy: adminUserId,
+    });
+    if (!enrollmentSnap.exists) transaction.update(courseSnap.ref, { enrollmentCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() });
+  });
+  try {
+    await sendPaymentReceiptEmail(paymentRef.id);
+  } catch (error) {
+    console.error("Manual payment receipt email failed", error);
+  }
+  return { success: true };
 }
 
 export async function verifyRazorpayPayment(userId, { razorpay_order_id: orderId, razorpay_payment_id: paymentId, razorpay_signature: signature }) {
