@@ -6,6 +6,7 @@ import { browserAuth as auth } from "@/lib/firebase/client-auth";
 import { getSessionById, isUserRegistered, registerForSession } from "@/features";
 import { formatDateIST, formatTimeIST, isSessionJoinable, parseISTDate } from "@/lib/time/ist";
 import Loader from "@/components/ui/Loader";
+import RichTextPolicyContent from "@/features/policies/components/RichTextPolicyContent";
 import { reportPaymentError } from "@/features/payments/payment-log.client";
 
 export default function SessionDetailPage({ params }) {
@@ -166,7 +167,7 @@ export default function SessionDetailPage({ params }) {
           <div><strong>Duration</strong><p>{session.duration} Minutes</p></div>
         </div>
 
-        <p style={styles.description}>{session.description}</p>
+        <div style={styles.description}><RichTextPolicyContent content={session.description} /></div>
 
         {sessionUnavailable ? (
           <div style={styles.cancelledBox} role="status">

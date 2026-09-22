@@ -6,7 +6,7 @@ import { createSession, getAdminCourses } from "@/features";
 import { IST_TIMEZONE, parseTimeInput } from "@/lib/time/ist";
 import Loader from "@/components/ui/Loader";
 import RichTextEditor from "@/features/policies/components/RichTextEditor";
-import { richTextToPlainText, toRichTextValue } from "@/features/policies/policy.content";
+import { toRichTextValue } from "@/features/policies/policy.content";
 
 export default function CreateSessionPage() {
   const router = useRouter();
@@ -46,7 +46,6 @@ export default function CreateSessionPage() {
     try {
       await createSession({
         ...form,
-        description: richTextToPlainText(form.description),
         time: normalizedTime,
         timezone: IST_TIMEZONE,
         duration: Number(form.duration),
