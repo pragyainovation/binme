@@ -7,6 +7,7 @@ import { browserAuth as auth } from "@/lib/firebase/client-auth";
 import { getLandingEvents, getUserProfile } from "@/features";
 import { formatDateIST, formatTimeIST } from "@/lib/time/ist";
 import { getSocialLinks } from "@/features/settings/site-settings.repository";
+import RichTextPolicyContent from "@/features/policies/components/RichTextPolicyContent";
 
 const Arrow = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -270,7 +271,7 @@ export default function Home() {
               <br />
               <em>speaking freely.</em>
             </h2>
-            <p>{webinar.description}</p>
+            <RichTextPolicyContent content={webinar.description} />
 
             <div className="event-details">
               <div>
