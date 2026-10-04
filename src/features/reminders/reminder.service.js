@@ -30,3 +30,39 @@ export async function sendEventReminderEmails(adminUserId, { eventId, eventType 
   const sent = result.filter((item) => item.status === "fulfilled").length;
   return { registered: registrations.size, sent, failed: recipients.length - sent };
 }
+
+export async function sendUpcomingCourseSessionReminderEmails(adminUserId, { courseId }) {
+  if (!courseId) throw failure("A course is required.", 400);
+  const { adminDb: db } = getAdminServices();
+  const profile = await db.collection("users").doc(adminUserId).get();
+  if (profile.data()?.role !== "admin") throw failure("Admin access required.", 403);
+
+  const now = Date.now();
+  const events = await db.collection("events").where("courseId", "==", courseId).where("status", "==", "active").get();
+  const upcomingSession = events.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .map((event) => ({ ...event, startsAt: new Date(`${event.date}T${event.time}:00+05:30`).getTime() }))
+    .filter((event) => Number.isFinite(event.startsAt) && event.startsAt > now)
+    .sort((first, second) => first.startsAt - second.startsAt)[0];
+
+  if (!upcomingSession) throw failure("This course has no upcoming active session.", 404);
+  if (!upcomingSession.meetLink) throw failure("Add a Google Meet link to the upcoming session before sending a reminder.", 409);
+
+  const enrollments = await db.collection("courseEnrollments").where("courseId", "==", courseId).get();
+  const activeEnrollments = enrollments.docs.map((item) => item.data()).filter((enrollment) => {
+    if (enrollment.status !== "enrolled") return false;
+    if (enrollment.accessType === "free") return true;
+    return enrollment.expiresAt?.toMillis?.() > now;
+  });
+  const users = await Promise.all(activeEnrollments.map(async (enrollment) => {
+    const user = await db.collection("users").doc(enrollment.userId).get();
+    return { enrollment, user: user.data() };
+  }));
+  const recipients = [...new Set(users.map(({ enrollment, user }) => String(enrollment.email || user?.email || "").trim().toLowerCase()).filter(Boolean))];
+  if (!recipients.length) return { sessionId: upcomingSession.id, sessionTitle: upcomingSession.title, activeLearners: activeEnrollments.length, sent: 0, failed: 0 };
+
+  const email = createEventReminderEmail(upcomingSession);
+  const result = await Promise.allSettled(recipients.map((to) => sendEmail({ to, ...email, emailType: "course_session_reminder" })));
+  const sent = result.filter((item) => item.status === "fulfilled").length;
+  return { sessionId: upcomingSession.id, sessionTitle: upcomingSession.title, activeLearners: activeEnrollments.length, sent, failed: recipients.length - sent };
+}

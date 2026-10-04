@@ -12,3 +12,16 @@ export async function sendEventReminderEmail(eventId, eventType) {
   if (!response.ok) throw new Error(result.error || "Email reminder failed.");
   return result;
 }
+
+export async function sendUpcomingCourseSessionReminderEmail(courseId) {
+  const user = browserAuth.currentUser;
+  if (!user) throw new Error("You must be signed in as an admin.");
+  const response = await fetch("/api/admin/reminders/course-session", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await user.getIdToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ courseId }),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || "Email reminder failed.");
+  return result;
+}

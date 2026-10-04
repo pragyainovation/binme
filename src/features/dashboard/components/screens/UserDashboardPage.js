@@ -9,25 +9,19 @@ import { onAuthStateChanged } from "firebase/auth";
 import {
   claimFreeWebinarRegistrations,
   getFreeWebinar,
-  getFreeWebinarById,
   getEnrollmentsByUser,
   getOpenSessions,
   getRegistrationsByUser,
-  getSessionById,
   getSessionsForCourse,
 } from "@/features";
 import { formatDateIST, formatTimeIST, isSessionJoinable, parseISTDate } from "@/lib/time/ist";
 
-const tabs = ["Upcoming", "Completed", "Closed", "Registered"];
-
 export default function DashboardPage() {
   const [sessions, setSessions] = useState([]);
   const [registrations, setRegistrations] = useState([]);
-  const [freeWebinar, setFreeWebinar] = useState(null);
   const [freeWebinarRegistration, setFreeWebinarRegistration] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("Upcoming");
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -49,18 +43,13 @@ export default function DashboardPage() {
         .filter((enrollment) => enrollment.status === "enrolled" && (enrollment.accessType === "free" || enrollment.expiresAt?.seconds * 1000 > Date.now()))
         .map((enrollment) => enrollment.courseId);
       const courseSessions = (await Promise.all(activeCourseIds.map(getSessionsForCourse))).flat();
-      const registeredInactiveSessions = (await Promise.all(registrationList.map(async (registration) => {
-        const session = await getSessionById(registration.sessionId);
-        return session?.status === "inactive" ? session : null;
-      }))).filter(Boolean);
       const freeRegistrations = await claimFreeWebinarRegistrations(currentUser);
       const latestFreeRegistration = freeRegistrations[0] || null;
       const freeWebinarData = await getFreeWebinar();
 
-      setSessions(freeWebinarData ? [{ ...freeWebinarData, isFreeWebinar: true }, ...openSessions, ...courseSessions, ...registeredInactiveSessions] : [...openSessions, ...courseSessions, ...registeredInactiveSessions]);
+      setSessions(freeWebinarData ? [{ ...freeWebinarData, isFreeWebinar: true }, ...openSessions, ...courseSessions] : [...openSessions, ...courseSessions]);
       setRegistrations(registrationList);
       setFreeWebinarRegistration(latestFreeRegistration);
-      setFreeWebinar(latestFreeRegistration ? await getFreeWebinarById(latestFreeRegistration.webinarId) : freeWebinarData);
       setLoading(false);
     });
 
@@ -94,21 +83,9 @@ export default function DashboardPage() {
             : Boolean(session.courseId) || registeredSessionIds.has(session.id),
         };
       })
+      .filter((session) => !session.isInactive && !session.isEnded)
       .sort((a, b) => (a.startDate?.getTime?.() ?? 0) - (b.startDate?.getTime?.() ?? 0));
   }, [sessions, registeredSessionIds, now]);
-
-  const tabData = useMemo(() => {
-    const registeredSessions = normalizedSessions.filter((session) => session.isRegistered);
-
-    return {
-      Upcoming: normalizedSessions.filter((session) => !session.isInactive && !session.isEnded && !session.isClosedForRegistration && !session.isRegistered),
-      Completed: normalizedSessions.filter((session) => session.isEnded || session.isInactive),
-      Closed: normalizedSessions.filter((session) => session.isClosedForRegistration && !session.isEnded),
-      Registered: registeredSessions,
-    };
-  }, [normalizedSessions]);
-
-  const visibleSessions = tabData[activeTab] || [];
   const sessionColumns = [
     { header: "Session", accessorKey: "title" },
     { header: "Date", accessorKey: "date", cell: ({ row }) => formatDateIST(row.original.date) },
@@ -152,40 +129,12 @@ export default function DashboardPage() {
         {loading ? (
           <div style={styles.loadingCard}><Loader label="Loading sessions" /></div>
         ) : (
-          <>
-            <section style={styles.topGrid}>
-              <div style={styles.statCard}>
-                <span style={styles.statLabel}>Upcoming sessions</span>
-                <strong style={styles.statValue}>{normalizedSessions.filter((session) => !session.isEnded && !session.isClosedForRegistration).length}</strong>
-              </div>
-              <div style={styles.statCard}>
-                <span style={styles.statLabel}>My registrations</span>
-                <strong style={styles.statValue}>{registrations.length + (freeWebinarRegistration ? 1 : 0)}</strong>
-              </div>
-            </section>
-
-              <section style={styles.section}>
+            <section style={styles.section}>
               <div style={styles.sectionHeader}>
-                <h2 style={styles.sectionTitle}>Webinars</h2>
-                <span style={styles.sectionBadge}>Overview</span>
+                <h2 style={styles.sectionTitle}>Upcoming sessions</h2>
               </div>
-
-              <div style={styles.tabsWrap}>
-                {tabs.map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setActiveTab(tab)}
-                    style={activeTab === tab ? styles.tabActive : styles.tab}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-
-              <DataTable columns={sessionColumns} data={visibleSessions} emptyMessage="No sessions in this tab." />
+              <DataTable columns={sessionColumns} data={normalizedSessions} emptyMessage="No upcoming sessions." />
             </section>
-          </>
         )}
       </div>
     </main>
