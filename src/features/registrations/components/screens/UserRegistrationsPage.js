@@ -6,7 +6,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { browserAuth as auth } from "@/lib/firebase/client-auth";
 import DataTable from "@/components/ui/DataTable";
 import Loader from "@/components/ui/Loader";
-import { formatDateIST, formatTimeIST } from "@/lib/time/ist";
+import { formatDateIST, formatTimeIST, isSessionEnded, parseISTDate } from "@/lib/time/ist";
 import {
   claimFreeWebinarRegistrations,
   getFreeWebinarById,
@@ -26,7 +26,23 @@ export default function MyRegistrationsPage() {
     { header: "Session", id: "title", accessorFn: (item) => item.freeWebinar?.title || item.session?.title || "Session" },
     { header: "Date", id: "date", accessorFn: (item) => item.freeWebinar?.date || item.session?.date || "-", cell: ({ row }) => formatDateIST(row.original.freeWebinar?.date || row.original.session?.date) },
     { header: "Time", id: "time", accessorFn: (item) => formatTimeIST(item.freeWebinar?.time || item.session?.time) || "-" + 'IST'},
-    { header: "Type", id: "type", accessorFn: (item) => item.freeWebinar ? "Free webinar" : item.courseSession ? "Course live session" : "Session" },
+    {
+      header: "Type",
+      id: "type",
+      accessorFn: (item) => item.freeWebinar ? "Free webinar" : item.courseSession ? "Course live session" : "Session",
+      cell: ({ row }) => <span style={styles.typeBadge}>{row.original.freeWebinar ? "Free webinar" : row.original.courseSession ? "Course live session" : "Session"}</span>,
+    },
+    {
+      header: "Status",
+      id: "status",
+      cell: ({ row }) => {
+        const resource = row.original.freeWebinar || row.original.session;
+        const start = parseISTDate(resource?.date, resource?.time);
+        const ended = start && now > start.getTime() + Number(resource?.duration || 0) * 60000;
+        const label = resource?.status === "cancelled" ? "Cancelled" : resource?.status === "inactive" ? "Inactive" : ended ? "Session Ended" : "Active";
+        return <span style={label === "Active" ? styles.activeBadge : styles.inactiveBadge}>{label}</span>;
+      },
+    },
     {
       header: "Actions",
       id: "actions",
@@ -65,7 +81,23 @@ export default function MyRegistrationsPage() {
         ...registration,
         freeWebinar: await getFreeWebinarById(registration.webinarId),
       })));
-      setItems([...transformed, ...courseItems, ...freeItems]);
+      const activeItems = [...transformed, ...courseItems, ...freeItems].filter((item) => {
+        const resource = item.freeWebinar || item.session;
+        return resource?.status !== "inactive" && resource?.status !== "cancelled" && !isSessionEnded(resource, now);
+      });
+      const getStartTime = (item) => {
+        const resource = item.freeWebinar || item.session;
+        return parseISTDate(resource?.date, resource?.time)?.getTime() ?? Number.POSITIVE_INFINITY;
+      };
+      activeItems.sort((a, b) => {
+        const aStart = getStartTime(a);
+        const bStart = getStartTime(b);
+        const aUpcoming = aStart >= now;
+        const bUpcoming = bStart >= now;
+        if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
+        return aUpcoming ? aStart - bStart : bStart - aStart;
+      });
+      setItems(activeItems);
       setLoading(false);
     });
 
@@ -158,4 +190,7 @@ const styles = {
   metaLabel: { display: "block", color: "#53615f", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.08 },
   cardMeta: { margin: "8px 0 0", color: "#4d5653" },
   linkButton: { display: "inline-block", background: "#182321", color: "#fff", padding: "10px 14px", borderRadius: 10, fontWeight: 700 },
+  typeBadge: { display: "inline-block", background: "#fde8e7", color: "#a83232", padding: "5px 9px", borderRadius: 999, fontWeight: 700, fontSize: 12, whiteSpace: "nowrap" },
+  activeBadge: { display: "inline-block", background: "#e2f4e8", color: "#17683b", padding: "5px 9px", borderRadius: 999, fontWeight: 700, fontSize: 12 },
+  inactiveBadge: { display: "inline-block", background: "#f9e4e4", color: "#8b2d2d", padding: "5px 9px", borderRadius: 999, fontWeight: 700, fontSize: 12 },
 };

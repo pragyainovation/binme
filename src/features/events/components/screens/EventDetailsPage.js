@@ -153,6 +153,7 @@ export default function SessionDetailPage({ params }) {
 
   if (loading) return <div style={{ padding: 40 }}><Loader label="Loading session" /></div>;
   if (!session) return <div style={{ padding: 40 }}>Session not found.</div>;
+  if (sessionEnded) return <div style={{ padding: 40 }}>Session not found.</div>;
 
   return (
     <main style={styles.page}>

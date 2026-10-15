@@ -28,7 +28,16 @@ export default function AdminSessionsPage() {
     const items = await getSessionsWithRegistrationData();
     const freeWebinars = await getFreeWebinarsWithRegistrations();
     const freeWebinar = freeWebinars.find((webinar) => webinar.status !== "inactive");
-    setSessions(freeWebinar ? [...items, { ...freeWebinar, isFreeWebinar: true }] : items);
+    const allSessions = freeWebinar ? [...items, { ...freeWebinar, isFreeWebinar: true }] : items;
+    const currentTime = Date.now();
+    setSessions(allSessions.sort((first, second) => {
+      const firstStart = parseISTDate(first.date, first.time)?.getTime() ?? Number.POSITIVE_INFINITY;
+      const secondStart = parseISTDate(second.date, second.time)?.getTime() ?? Number.POSITIVE_INFINITY;
+      const firstUpcoming = first.status === "active" && firstStart >= currentTime;
+      const secondUpcoming = second.status === "active" && secondStart >= currentTime;
+      if (firstUpcoming !== secondUpcoming) return firstUpcoming ? -1 : 1;
+      return firstUpcoming ? firstStart - secondStart : secondStart - firstStart;
+    }));
     setLoading(false);
   };
 

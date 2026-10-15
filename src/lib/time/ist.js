@@ -38,3 +38,9 @@ export function isSessionJoinable(session, now = Date.now()) {
   if (!startDate || durationMinutes <= 0) return false;
   return now >= startDate.getTime() - 5 * 60000 && now <= startDate.getTime() + durationMinutes * 60000;
 }
+
+export function isSessionEnded(session, now = Date.now()) {
+  const startDate = parseISTDate(session?.date, session?.time);
+  const durationMinutes = Number(session?.duration || 0);
+  return Boolean(startDate && durationMinutes > 0 && now > startDate.getTime() + durationMinutes * 60000);
+}

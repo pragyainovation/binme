@@ -1,6 +1,6 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { browserDb } from "@/lib/firebase/client-firestore";
-import { IST_TIMEZONE, parseISTDate } from "@/lib/time/ist";
+import { IST_TIMEZONE, isSessionEnded, parseISTDate } from "@/lib/time/ist";
 
 const records = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
 
@@ -10,11 +10,11 @@ export async function getSessions() {
 }
 export async function getOpenSessions() {
   const sessions = records(await getDocs(query(collection(browserDb, "events"), where("courseId", "==", null), where("status", "==", "active"))));
-  return sessions.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  return sessions.filter((item) => !isSessionEnded(item)).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 }
 export async function getSessionsForCourse(courseId) {
   const sessions = records(await getDocs(query(collection(browserDb, "events"), where("courseId", "==", courseId))));
-  return sessions.filter((item) => item.status !== "cancelled").sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+  return sessions.filter((item) => item.status !== "cancelled" && !isSessionEnded(item)).sort((a, b) => (a.date || "").localeCompare(b.date || ""));
 }
 export async function getLandingEvents() {
   const events = records(await getDocs(query(collection(browserDb, "events"), where("courseId", "==", null), where("status", "==", "active"))));
